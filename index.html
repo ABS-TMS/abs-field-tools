@@ -1,1 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EzzAgent Tools</title>
+<link href="https://fonts.googleapis.com/css2?family=Cambria:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy: hsl(220, 67%, 11%);
+  --navy-dark: hsl(220, 67%, 7%);
+  --gold: hsl(42, 70%, 55%);
+  --gold-light: #F3E3BC;
+  --cream: #F7F5EF;
+  --white: #FFFFFF;
+  --ink: #1C2230;
+  --muted: #5F5E5A;
+  --border: #E5E3DA;
+  --teal: #0F6E56;
+  --teal-light: #E1F5EE;
+  --purple: #3C3489;
+  --purple-light: #EEEDFE;
+  --red: #A32D2D;
+  --red-light: #FCEBEB;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+body { font-family: var(--font); background: var(--cream); color: var(--ink); min-height: 100vh; }
 
+/* HEADER */
+header { background: var(--navy); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid var(--gold); }
+.logo-wrap { display: flex; align-items: center; gap: 10px; }
+.logo-badge { width: 32px; height: 32px; border-radius: 8px; background: var(--gold); display: flex; align-items: center; justify-content: center; color: var(--navy); font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.logo-text { font-size: 14px; font-weight: 600; color: var(--white); }
+.logo-text span { color: var(--gold); }
+.header-sub { font-size: 11px; color: rgba(255,255,255,0.55); margin-top: 1px; }
+
+/* TABS */
+.tabs-wrapper { background: var(--navy-dark); padding: 0 24px; overflow-x: auto; }
+.tabs { display: flex; gap: 0; }
+.tab { padding: 13px 18px; font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,0.55); cursor: pointer; border: none; background: none; font-family: inherit; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.15s; }
+.tab:hover { color: var(--white); }
+.tab.active { color: var(--white); border-bottom-color: var(--gold); }
+
+/* MAIN */
+.main { max-width: 760px; margin: 0 auto; padding: 28px 16px 60px; }
+.tool-panel { display: none; }
+.tool-panel.active { display: block; }
+
+/* TOOL HEADER */
+.tool-header { margin-bottom: 22px; }
+.tool-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+.tool-title { font-family: 'Cambria', Georgia, serif; font-size: 26px; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+.tool-desc { font-size: 13.5px; color: var(--muted); line-height: 1.6; }
+
+/* FORM CARD */
+.form-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 22px; margin-bottom: 16px; }
+.form-row { margin-bottom: 14px; }
+.form-row label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.form-row input, .form-row select, .form-row textarea {
+  width: 100%; padding: 10px 13px; background: var(--cream);
+  border: 1px solid var(--border); border-radius: 7px;
+  font-size: 13.5px; color: var(--ink); font-family: inherit; transition: border-color 0.15s;
+}
+.form-row input:focus, .form-row select:focus, .form-row textarea:focus { outline: none; border-color: var(--gold); background: var(--white); }
+.form-row input::placeholder, .form-row textarea::placeholder { color: #B4B2A9; }
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.form-section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--gold); margin-bottom: 12px; }
+
+/* BUTTONS */
+.btn-submit { width: 100%; padding: 13px; background: var(--navy); color: white; font-size: 13px; font-weight: 600; letter-spacing: 0.02em; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; transition: background 0.15s; margin-top: 4px; }
+.btn-submit:hover { background: var(--navy-dark); }
+.btn-submit:disabled { background: #B4B2A9; cursor: not-allowed; }
+.btn-copy { padding: 7px 16px; background: transparent; color: var(--navy); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+.btn-copy:hover { border-color: var(--gold); background: var(--gold-light); }
+.btn-clear { padding: 7px 16px; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; }
+
+/* RESULT */
+.result-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: none; }
+.result-card.visible { display: block; }
+.result-header { padding: 12px 18px; background: var(--cream); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.result-title { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.result-actions { display: flex; gap: 8px; }
+.result-body { padding: 18px; font-size: 13.5px; color: var(--ink); line-height: 1.75; white-space: pre-wrap; }
+.result-body.loading { color: var(--muted); font-style: italic; }
+
+/* DISCLAIMER NOTE */
+.tool-disclaimer { background: var(--gold-light); border: 1px solid #E8D098; border-radius: 8px; padding: 10px 14px; font-size: 11.5px; color: #6B4E00; line-height: 1.5; margin-bottom: 14px; }
+
+/* NET SHEET SPECIFIC */
+.net-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.net-row:last-child { border-bottom: none; }
+.net-row.total { font-weight: 700; font-size: 15px; color: var(--teal); border-top: 1px solid var(--border); margin-top: 6px; padding-top: 10px; }
+.net-row.subtotal { font-weight: 600; color: var(--ink); }
+.net-row .label { color: var(--muted); }
+.net-row .value { color: var(--ink); }
+.net-row .value.negative { color: var(--red); }
+.net-row .value.positive { color: var(--teal); }
+
+/* PROPERTY SCOUT SPECIFIC */
+.search-row { display: flex; gap: 10px; }
+.search-row input { flex: 1; }
+.search-btn { white-space: nowrap; font-size: 13px; font-weight: 600; background: var(--navy); color: var(--white); border: none; border-radius: 7px; padding: 0 18px; cursor: pointer; transition: background 0.15s; }
+.search-btn:hover { background: var(--navy-dark); }
+.search-btn:disabled { background: #B4B2A9; cursor: not-allowed; }
+.ps-loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; padding: 1.5rem 0; justify-content: center; }
+.ps-spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.ps-error-card { background: var(--red-light); border: 1px solid #F0C9C9; border-radius: 8px; padding: 11px 14px; font-size: 13px; color: var(--red); margin-bottom: 1rem; }
+.ps-report-header { background: var(--navy); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+.ps-report-address { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 3px; }
+.ps-report-sub { font-size: 12px; color: rgba(255,255,255,0.6); }
+.ps-report-meta { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.ps-tag { font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,0.12); color: var(--gold-light); }
+.ps-section { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+.ps-section-header { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--cream); }
+.ps-section-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.ps-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.ps-stat { background: var(--cream); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
+.ps-stat-label { font-size: 10.5px; color: var(--muted); margin-bottom: 2px; }
+.ps-stat-val { font-size: 14px; font-weight: 700; color: var(--ink); }
+.ps-history-table { width: 100%; border-collapse: collapse; }
+.ps-history-table th { font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 5px 0; text-align: left; border-bottom: 1px solid var(--border); }
+.ps-history-table td { font-size: 13px; color: var(--ink); padding: 8px 0; border-bottom: 1px solid var(--cream); }
+.ps-history-table tr:last-child td { border-bottom: none; }
+.ps-history-table td.price { font-weight: 700; color: var(--navy); }
+.ps-data-source { background: var(--cream); border: 1px solid var(--border); border-radius: 8px; padding: 9px 13px; font-size: 11.5px; color: var(--muted); line-height: 1.55; display: flex; gap: 7px; margin-bottom: 14px; }
+.ps-share-btn { display: block; width: 100%; background: var(--navy); color: var(--white); font-size: 14px; font-weight: 600; padding: 13px; border: none; border-radius: 10px; cursor: pointer; text-align: center; margin-bottom: 14px; }
+.ps-share-btn:hover { background: var(--navy-dark); }
+.ps-disclaimer { font-size: 11.5px; color: var(--muted); line-height: 1.6; font-style: italic; text-align: center; padding-bottom: 8px; }
+
+/* PROPERTY PHOTO */
+.ps-photo-wrap { border-radius: 10px; overflow: hidden; margin-bottom: 14px; border: 1px solid var(--border); background: var(--cream); }
+.ps-photo-wrap img { width: 100%; display: block; max-height: 280px; object-fit: cover; }
+
+/* COLLAPSIBLE SECTIONS (Risk Audit / Market Intel / Neighborhood) */
+.ps-collapse { background: var(--white); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+.ps-collapse-header { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; cursor: pointer; background: none; border: none; font-family: inherit; text-align: left; }
+.ps-collapse-header:hover { background: var(--cream); }
+.ps-collapse-title-wrap { display: flex; align-items: center; gap: 8px; }
+.ps-collapse-badge { font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; }
+.ps-collapse-title { font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.ps-collapse-chevron { font-size: 12px; color: var(--muted); transition: transform 0.15s; }
+.ps-collapse-chevron.open { transform: rotate(180deg); }
+.ps-collapse-body { display: none; padding: 4px 16px 16px; }
+.ps-collapse-body.open { display: block; }
+
+/* HAZARD ROWS */
+.ps-hazard-row { padding: 10px 0; border-bottom: 1px solid var(--cream); }
+.ps-hazard-row:last-child { border-bottom: none; }
+.ps-hazard-label { font-size: 11.5px; font-weight: 700; color: var(--ink); margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+.ps-hazard-val { font-size: 13px; font-weight: 600; }
+.ps-hazard-val.safe { color: var(--teal); }
+.ps-hazard-val.risk { color: var(--red); }
+.ps-hazard-val.caution { color: #9A6A00; }
+.ps-hazard-source { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.ps-hazard-note { font-size: 11px; color: var(--red); margin-top: 2px; }
+
+/* AMENITY CARDS */
+.ps-amenity-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.ps-amenity-card { background: var(--cream); border: 1px solid var(--border); border-radius: 8px; padding: 10px 11px; }
+.ps-amenity-label { font-size: 10.5px; color: var(--muted); margin-bottom: 3px; display: flex; align-items: center; gap: 5px; }
+.ps-amenity-name { font-size: 12.5px; font-weight: 700; color: var(--ink); margin-bottom: 1px; }
+.ps-amenity-meta { font-size: 10.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.ps-amenity-rating { color: #9A6A00; }
+.ps-amenity-empty { font-size: 11.5px; color: var(--muted); font-style: italic; }
+
+/* MARKET INTEL ROWS */
+.ps-market-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--cream); font-size: 12.5px; }
+.ps-market-row:last-child { border-bottom: none; }
+.ps-market-row .label { color: var(--muted); }
+.ps-market-row .value { font-weight: 700; color: var(--ink); }
+
+/* MODAL OVERLAY */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100; align-items: center; justify-content: center; padding: 1rem; }
+.modal-overlay.active { display: flex; }
+.modal { background: var(--white); border-radius: 14px; max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 1.6rem; position: relative; }
+.modal-close { position: absolute; top: 1rem; right: 1rem; background: var(--cream); border: none; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+.modal-close:hover { background: var(--border); }
+.modal h2 { font-family: 'Cambria', Georgia, serif; font-size: 17px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+.modal-alert { background: var(--gold-light); border: 1px solid #E8D098; border-radius: 8px; padding: 11px 13px; margin-bottom: 1.1rem; }
+.modal-alert h3 { font-size: 12px; font-weight: 700; color: #6B4E00; margin-bottom: 3px; }
+.modal-alert p { font-size: 11.5px; color: #6B4E00; line-height: 1.5; }
+.modal-items { margin-bottom: 1.1rem; }
+.modal-item { padding: 9px 0; border-bottom: 1px solid var(--cream); }
+.modal-item:last-child { border-bottom: none; }
+.modal-item h4 { font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 3px; }
+.modal-item p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.modal-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+.modal-field { display: flex; flex-direction: column; gap: 4px; }
+.modal-field.full { grid-column: 1 / -1; }
+.modal-field label { font-size: 11px; font-weight: 600; color: var(--muted); }
+.modal-field input { font-family: inherit; font-size: 13px; color: var(--ink); background: var(--cream); border: 1px solid var(--border); border-radius: 7px; padding: 8px 11px; outline: none; }
+.modal-field input:focus { border-color: var(--gold); background: var(--white); }
+.modal-check { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 1.1rem; }
+.modal-check input { margin-top: 3px; flex-shrink: 0; width: 15px; height: 15px; }
+.modal-check label { font-size: 12px; color: var(--muted); line-height: 1.45; }
+.modal-btn { display: block; width: 100%; background: var(--navy); color: white; font-size: 13px; font-weight: 600; padding: 12px; border: none; border-radius: 9px; cursor: pointer; }
+.modal-btn:hover { background: var(--navy-dark); }
+.modal-citation { font-size: 10.5px; color: var(--purple); font-weight: 600; }
+
+footer { background: var(--navy); padding: 1.2rem; text-align: center; font-size: 11.5px; color: rgba(255,255,255,0.4); margin-top: 1.5rem; }
+footer a { color: rgba(255,255,255,0.55); text-decoration: none; }
+
+@media (max-width: 600px) {
+  .tabs-wrapper { padding: 0 14px; }
+  .main { padding: 18px 12px 50px; }
+  .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
+  .ps-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .tool-title { font-size: 21px; }
+  .search-row { flex-direction: column; }
+  .modal-fields { grid-template-columns: 1fr; }
+}
+
+/* BUYER INTAKE TAB */
+.bi-toggle { display: flex; gap: 0; margin-bottom: 18px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; width: fit-content; }
+.bi-toggle button { padding: 9px 18px; font-size: 12.5px; font-weight: 600; border: none; background: var(--white); color: var(--muted); cursor: pointer; font-family: inherit; }
+.bi-toggle button.active { background: var(--navy); color: var(--white); }
+.bi-view { display: none; }
+.bi-view.active { display: block; }
+
+.bi-link-result { display: none; margin-top: 14px; }
+.bi-link-result.visible { display: block; }
+.bi-link-box { display: flex; gap: 8px; align-items: center; background: var(--cream); border-radius: 7px; padding: 9px 12px; margin-bottom: 10px; }
+.bi-link-box input { flex: 1; border: none; background: none; font-size: 12.5px; color: var(--navy); font-family: monospace; padding: 0; outline: none; }
+.bi-share-row { display: flex; gap: 8px; }
+.bi-share-row a { flex: 1; text-align: center; padding: 9px; border-radius: 7px; font-size: 13px; font-weight: 600; text-decoration: none; font-family: inherit; }
+.bi-share-text { background: var(--navy); color: var(--white); }
+.bi-share-email { background: var(--white); color: var(--navy); border: 1px solid var(--border); }
+
+.bi-pin-card { max-width: 280px; margin: 0 auto; text-align: center; }
+.bi-pin-card input { width: 100%; padding: 11px; font-size: 17px; text-align: center; letter-spacing: 4px; margin-bottom: 12px; }
+.bi-pin-error { color: var(--red); font-size: 12.5px; margin-top: 8px; display: none; }
+.bi-pin-error.show { display: block; }
+
+.bi-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+.bi-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.bi-addr { font-weight: 700; font-size: 13.5px; color: var(--navy); margin: 0; }
+.bi-meta { font-size: 11px; color: var(--muted); margin: 2px 0 0; }
+.bi-badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0; }
+.bi-badge-sent { background: #FAEEDA; color: #854F0B; }
+.bi-badge-submitted { background: var(--teal-light); color: var(--teal); }
+.bi-badge-transferred { background: var(--cream); color: var(--muted); }
+.bi-details { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--cream); display: none; }
+.bi-details.show { display: block; }
+.bi-detail-row { display: flex; justify-content: space-between; font-size: 12.5px; padding: 4px 0; }
+.bi-detail-row .k { color: var(--muted); }
+.bi-detail-row .v { font-weight: 600; color: var(--ink); text-align: right; }
+.bi-notes-box { font-size: 12.5px; color: var(--ink); margin-top: 7px; padding: 9px; background: var(--cream); border-radius: 6px; }
+.bi-card-actions { margin-top: 10px; display: flex; gap: 8px; }
+.bi-card-actions button { flex: 1; padding: 7px; font-size: 12px; font-weight: 600; border-radius: 6px; cursor: pointer; border: 1px solid var(--border); background: var(--white); color: var(--navy); font-family: inherit; }
+.bi-card-actions button.primary { background: var(--navy); color: var(--white); border: none; }
+.bi-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <div class="logo-badge">E</div>
+    <div>
+      <div class="logo-text">Ezz<span>Agent</span> Tools</div>
+      <div class="header-sub">AI-Powered · Texas Agents</div>
+    </div>
+  </div>
+</header>
+
+<div class="tabs-wrapper">
+  <div class="tabs">
+    <button class="tab active" onclick="showTool('scout')">Property Scout</button>
+    <button class="tab" onclick="showTool('listing')">Listing Description</button>
+    <button class="tab" onclick="showTool('email')">Client Email</button>
+    <button class="tab" onclick="showTool('offer')">Offer Strength</button>
+    <button class="tab" onclick="showTool('openhouse')">Open House</button>
+    <button class="tab" onclick="showTool('buyerintake')">Buyer Intake</button>
+    <button class="tab" onclick="window.open('https://ezzagent-tools.netlify.app/followup-tracker.html', '_blank')">Follow-Up Tracker</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- TOOL: PROPERTY SCOUT -->
+  <div class="tool-panel active" id="tool-scout">
+    <div class="tool-header">
+      <div class="tool-eyebrow">Public Records</div>
+      <div class="tool-title">Property Scout</div>
+      <div class="tool-desc">Public records lookup with a built-in compliance workflow. Search any Texas property and share with clients the right way.</div>
+    </div>
+
+    <div class="form-card">
+      <div class="form-row" style="margin-bottom: 8px;">
+        <label>Search a property</label>
+        <div class="search-row">
+          <input type="text" id="ps-address-input" placeholder="2113 Carriage Hill St, Denton TX">
+          <button class="search-btn" id="ps-search-btn" onclick="searchProperty()">Search →</button>
+        </div>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);">Enter full street address including city and state for best results.</div>
+    </div>
+
+    <div id="ps-result-area"></div>
+  </div>
+
+  <!-- TOOL: LISTING DESCRIPTION -->
+  <div class="tool-panel" id="tool-listing">
+    <div class="tool-header">
+      <div class="tool-eyebrow">Marketing</div>
+      <div class="tool-title">Listing Description Generator</div>
+      <div class="tool-desc">Fill in the property details and get three professional listing descriptions — formal, conversational, and SEO-optimized — in seconds.</div>
+    </div>
+    <div class="form-card">
+      <div class="form-grid-3">
+        <div class="form-row"><label>Bedrooms</label><input type="number" id="l-beds" placeholder="4"></div>
+        <div class="form-row"><label>Bathrooms</label><input type="number" id="l-baths" placeholder="3"></div>
+        <div class="form-row"><label>Square Feet</label><input type="text" id="l-sqft" placeholder="2,450"></div>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-row"><label>City / Area</label><input type="text" id="l-city" placeholder="Krum, TX"></div>
+        <div class="form-row"><label>Price</label><input type="text" id="l-price" placeholder="$385,000"></div>
+      </div>
+      <div class="form-row"><label>Year built</label><input type="text" id="l-year" placeholder="2018"></div>
+      <div class="form-row"><label>Key features (list the best ones)</label><textarea id="l-features" rows="3" placeholder="Pool, 3-car garage, updated kitchen with quartz countertops, open floor plan, large master suite, backing to greenbelt..."></textarea></div>
+      <div class="form-row"><label>Neighborhood highlights</label><input type="text" id="l-neighborhood" placeholder="Northwest ISD, quiet cul-de-sac, close to 35W..."></div>
+      <button class="btn-submit" onclick="generateListing()">Generate Descriptions →</button>
+    </div>
+    <div class="result-card" id="result-listing">
+      <div class="result-header">
+        <div class="result-title">Your listing descriptions</div>
+        <div class="result-actions">
+          <button class="btn-copy" onclick="copyResult('result-listing-body')">Copy all</button>
+          <button class="btn-clear" onclick="clearResult('result-listing')">Clear</button>
+        </div>
+      </div>
+      <div class="result-body" id="result-listing-body"></div>
+    </div>
+  </div>
+
+  <!-- TOOL: CLIENT EMAIL -->
+  <div class="tool-panel" id="tool-email">
+    <div class="tool-header">
+      <div class="tool-eyebrow">Communication</div>
+      <div class="tool-title">Client Email Drafter</div>
+      <div class="tool-desc">Select the situation, fill in the specifics, and get a professional client-ready email in seconds. Edit to match your voice before sending.</div>
+    </div>
+    <div class="form-card">
+      <div class="form-row">
+        <label>Situation</label>
+        <select id="e-situation">
+          <option value="">Select the situation...</option>
+          <option value="option_period">Explaining the option period to a buyer</option>
+          <option value="inspection_results">Sharing inspection results with buyer</option>
+          <option value="low_appraisal">Low appraisal — explaining options</option>
+          <option value="multiple_offers">Multiple offers — what it means for the buyer</option>
+          <option value="closing_delay">Closing delay explanation</option>
+          <option value="offer_rejected">Offer rejected — next steps</option>
+          <option value="contract_executed">Contract executed — what happens now</option>
+          <option value="final_walkthrough">Final walkthrough reminder</option>
+          <option value="price_reduction">Discussing a price adjustment with seller</option>
+          <option value="listing_expired">Listing expired — conversation with seller</option>
+        </select>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-row"><label>Client first name</label><input type="text" id="e-client" placeholder="Sarah"></div>
+        <div class="form-row"><label>Property address (optional)</label><input type="text" id="e-address" placeholder="123 Main St, Denton"></div>
+      </div>
+      <div class="form-row"><label>Key details to include</label><textarea id="e-details" rows="3" placeholder="Option period ends Friday at 5pm. Inspector found minor items — HVAC service needed, one window seal broken. Seller agreed to $500 credit..."></textarea></div>
+      <div class="form-row">
+        <label>Tone</label>
+        <select id="e-tone">
+          <option value="warm">Warm and reassuring</option>
+          <option value="professional">Professional and direct</option>
+          <option value="urgent">Urgent — time sensitive</option>
+        </select>
+      </div>
+      <button class="btn-submit" onclick="generateEmail()">Draft Email →</button>
+    </div>
+    <div class="result-card" id="result-email">
+      <div class="result-header">
+        <div class="result-title">Your client email</div>
+        <div class="result-actions">
+          <button class="btn-copy" onclick="copyResult('result-email-body')">Copy email</button>
+          <button class="btn-clear" onclick="clearResult('result-email')">Clear</button>
+        </div>
+      </div>
+      <div class="result-body" id="result-email-body"></div>
+    </div>
+  </div>
+
+  <!-- TOOL: OFFER STRENGTH -->
+  <div class="tool-panel" id="tool-offer">
+    <div class="tool-header">
+      <div class="tool-eyebrow">Analysis</div>
+      <div class="tool-title">Offer Strength Analyzer</div>
+      <div class="tool-desc">Input the listing details and your offer terms. Get a straightforward breakdown of how the offer stacks up on paper, based only on the numbers you enter.</div>
+    </div>
+    <div class="tool-disclaimer">This tool summarizes the numbers you provide — it is not market analysis, an appraisal, or professional advice. Review the analysis with your client and your broker before relying on it.</div>
+    <div class="form-card">
+      <div class="form-section-label">The Listing</div>
+      <div class="form-grid-3">
+        <div class="form-row"><label>List price</label><input type="text" id="o-listprice" placeholder="$425,000"></div>
+        <div class="form-row"><label>Days on market</label><input type="number" id="o-dom" placeholder="4"></div>
+        <div class="form-row"><label>Known offers</label><input type="number" id="o-offers" placeholder="3"></div>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-row"><label>City / area</label><input type="text" id="o-city" placeholder="Southlake, TX"></div>
+        <div class="form-row"><label>Property type</label>
+          <select id="o-type">
+            <option>Single family residential</option>
+            <option>Townhome / condo</option>
+            <option>New construction</option>
+            <option>Farm & ranch</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-section-label" style="margin-top:16px;">Your Offer</div>
+      <div class="form-grid-3">
+        <div class="form-row"><label>Offer price</label><input type="text" id="o-offerprice" placeholder="$435,000"></div>
+        <div class="form-row"><label>Option period (days)</label><input type="number" id="o-option" placeholder="7"></div>
+        <div class="form-row"><label>Option fee ($)</label><input type="text" id="o-optionfee" placeholder="250"></div>
+      </div>
+      <div class="form-grid-3">
+        <div class="form-row"><label>Earnest money ($)</label><input type="text" id="o-earnest" placeholder="5,000"></div>
+        <div class="form-row"><label>Finance type</label>
+          <select id="o-finance">
+            <option>Conventional</option>
+            <option>Cash</option>
+            <option>FHA</option>
+            <option>VA</option>
+            <option>USDA</option>
+          </select>
+        </div>
+        <div class="form-row"><label>Closing date</label><input type="text" id="o-closing" placeholder="30 days"></div>
+      </div>
+      <div class="form-row"><label>Concessions or special terms</label><input type="text" id="o-concessions" placeholder="Asking for $3k closing costs, leaseback needed, etc. Or leave blank."></div>
+      <button class="btn-submit" onclick="analyzeOffer()">Analyze My Offer →</button>
+    </div>
+    <div class="result-card" id="result-offer">
+      <div class="result-header">
+        <div class="result-title">Offer strength analysis</div>
+        <div class="result-actions">
+          <button class="btn-copy" onclick="copyResult('result-offer-body')">Copy analysis</button>
+          <button class="btn-clear" onclick="clearResult('result-offer')">Clear</button>
+        </div>
+      </div>
+      <div class="result-body" id="result-offer-body"></div>
+    </div>
+  </div>
+
+  <!-- TOOL: OPEN HOUSE FOLLOW-UP -->
+  <div class="tool-panel" id="tool-openhouse">
+    <div class="tool-header">
+      <div class="tool-eyebrow">Follow-Up</div>
+      <div class="tool-title">Open House Follow-Up</div>
+      <div class="tool-desc">Turn your sign-in sheet into personalized follow-up emails in seconds. Enter each visitor's details and get a ready-to-send email that references what they saw and moves them toward the next step.</div>
+    </div>
+    <div class="form-card">
+      <div class="form-row">
+        <label>Open House Address</label>
+        <input type="text" id="oh-address" placeholder="123 Main St, Denton TX 76201">
+      </div>
+      <div class="form-grid-2">
+        <div class="form-row"><label>Visitor First Name</label><input type="text" id="oh-visitor" placeholder="Sarah"></div>
+        <div class="form-row"><label>Open House Date</label><input type="date" id="oh-date"></div>
+      </div>
+      <div class="form-row">
+        <label>How interested did they seem?</label>
+        <select id="oh-interest">
+          <option value="very">Very interested — asked lots of questions</option>
+          <option value="moderate">Moderate — looked around, seemed to like it</option>
+          <option value="browsing">Just browsing — early in their search</option>
+          <option value="investor">Investor — evaluating for investment</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>What did they mention or ask about?</label>
+        <textarea id="oh-notes" rows="3" placeholder="Asked about the school district, loved the kitchen, concerned about the backyard size, mentioned they have a house to sell first..."></textarea>
+      </div>
+      <div class="form-row">
+        <label>Tone</label>
+        <select id="oh-tone">
+          <option value="warm">Warm and personal</option>
+          <option value="professional">Professional and direct</option>
+          <option value="urgent">Create some urgency — other interest in the property</option>
+        </select>
+      </div>
+      <button class="btn-submit" onclick="generateOpenHouse()">Generate Follow-Up Email →</button>
+    </div>
+    <div class="result-card" id="result-openhouse">
+      <div class="result-header">
+        <div class="result-title">Your follow-up email</div>
+        <div class="result-actions">
+          <button class="btn-copy" onclick="copyResult('result-openhouse-body')">Copy email</button>
+          <button class="btn-clear" onclick="clearResult('result-openhouse')">Clear</button>
+        </div>
+      </div>
+      <div class="result-body" id="result-openhouse-body"></div>
+    </div>
+  </div>
+
+  <!-- TOOL: BUYER INTAKE -->
+  <div class="tool-panel" id="tool-buyerintake">
+    <div class="tool-header">
+      <div class="tool-eyebrow">Showings</div>
+      <div class="tool-title">Buyer Intake Checklist</div>
+      <div class="tool-desc">Capture a buyer's offer details right after a showing. They fill it out on their phone — you review and move it into the offer.</div>
+    </div>
+
+    <div class="bi-toggle">
+      <button class="active" id="bi-tab-new" onclick="biShowView('new')">New intake</button>
+      <button id="bi-tab-submitted" onclick="biShowView('submitted')">Submitted</button>
+    </div>
+
+    <!-- NEW INTAKE VIEW -->
+    <div class="bi-view active" id="bi-view-new">
+      <div class="form-card">
+        <div class="form-row">
+          <label>Property address</label>
+          <input type="text" id="bi-address" placeholder="123 Mockingbird Ln, Lantana TX 76226">
+        </div>
+        <button class="btn-submit" id="bi-create-btn" onclick="biCreateLink()">Create link</button>
+        <div style="font-size:11.5px;color:var(--red);margin-top:8px;display:none;" id="bi-create-error"></div>
+      </div>
+
+      <div class="bi-link-result" id="bi-link-result">
+        <div class="form-card">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Link ready — share it with your client:</div>
+          <div class="bi-link-box">
+            <input type="text" id="bi-link-output" readonly>
+            <button class="btn-copy" onclick="biCopyLink()" id="bi-copy-btn">Copy</button>
+          </div>
+          <div class="bi-share-row">
+            <a href="#" id="bi-text-link" class="bi-share-text">Text it</a>
+            <a href="#" id="bi-email-link" class="bi-share-email">Email it</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBMITTED VIEW (PIN-gated) -->
+    <div class="bi-view" id="bi-view-submitted">
+      <div class="form-card bi-pin-card" id="bi-pin-gate">
+        <div class="form-row" style="text-align:left;">
+          <label>Enter PIN</label>
+          <input type="text" id="bi-pin-input" inputmode="numeric" maxlength="6">
+        </div>
+        <button class="btn-submit" onclick="biCheckPin()">Unlock</button>
+        <div class="bi-pin-error" id="bi-pin-error">Incorrect PIN.</div>
+      </div>
+
+      <div id="bi-submitted-list" style="display:none;"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- PROPERTY SCOUT MODALS -->
+<div class="modal-overlay" id="modal-before-send">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-before-send')">✕</button>
+    <h2>Before We Send This Report</h2>
+    <div class="modal-alert">
+      <h3>Consumer acknowledgment required</h3>
+      <p class="modal-citation">Texas Occ. Code §1101.562 & §1101.563</p>
+      <p>Viewing or purchasing residential property requires a written representation agreement with a licensed Texas agent prior to any showing.</p>
+    </div>
+    <div class="modal-items">
+      <div class="modal-item">
+        <h4>1. Neutrality Declaration</h4>
+        <p>This Property Scout report contains public record information only and does not constitute professional real estate advice, appraisal, or legal counsel.</p>
+      </div>
+      <div class="modal-item">
+        <h4>2. Representation Requirement</h4>
+        <p>I understand that viewing any residential property requires a signed written representation agreement with a licensed Texas agent prior to the showing.</p>
+      </div>
+      <div class="modal-item">
+        <h4>3. Disclaimer</h4>
+        <p>EzzAgent Tools is a data tool, not your legal or brokerage advisor. You assume full responsibility for the information shared with the consumer.</p>
+      </div>
+    </div>
+    <div class="modal-fields">
+      <div class="modal-field full">
+        <label>Consumer Name (to confirm acknowledgment)</label>
+        <input type="text" id="consumer-name-1" placeholder="Full name">
+      </div>
+    </div>
+    <button class="modal-btn" id="modal-1-btn" onclick="proceedToModal2()">Continue to Share →</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-share">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-share')">✕</button>
+    <h2>Share Property Report</h2>
+    <div class="modal-items">
+      <div class="modal-item">
+        <h4>Neutrality Declaration</h4>
+        <p>I represent that I am providing this data as a neutral, factual summary. I am not offering professional advice, opinions, or negotiation strategy regarding this information at this time.</p>
+      </div>
+      <div class="modal-item">
+        <h4>IABS Confirmation</h4>
+        <p>I confirm that I have provided the mandatory Information About Brokerage Services (IABS) notice to this consumer as required by Texas law.</p>
+      </div>
+      <div class="modal-item">
+        <h4>Disclaimer</h4>
+        <p>EzzAgent Tools is a data tool, not your legal or brokerage advisor. You assume full responsibility for the information shared with the consumer.</p>
+      </div>
+    </div>
+    <div class="modal-fields">
+      <div class="modal-field">
+        <label>Consumer Name</label>
+        <input type="text" id="consumer-name-2" placeholder="Full name">
+      </div>
+      <div class="modal-field">
+        <label>Consumer Email</label>
+        <input type="email" id="consumer-email" placeholder="email@example.com">
+      </div>
+    </div>
+    <div class="modal-check">
+      <input type="checkbox" id="iabs-confirm">
+      <label for="iabs-confirm">I acknowledge my status as a professional and confirm compliance with IABS and neutrality requirements.</label>
+    </div>
+    <button class="modal-btn" id="modal-2-btn" onclick="confirmShare()">Share Report ✓</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-success">
+  <div class="modal" style="text-align:center;">
+    <h2>Report Shared</h2>
+    <p style="font-size:13px; color:var(--muted); margin: 1rem 0; line-height:1.6;">The property report has been logged and sent to <strong id="success-email"></strong>. Your compliance acknowledgment has been recorded.</p>
+    <button class="modal-btn" onclick="closeModal('modal-success')" style="margin-top:0.5rem;">Done</button>
+  </div>
+</div>
+
+<footer>
+  &copy; 2026 EzzAgent &nbsp;|&nbsp; Attorney Broker Services, LLC &nbsp;|&nbsp; Broker License #9007529
+</footer>
+
+<script>
+// ── BROKER TOOLS REQUEST-ACCESS ──
+const SUPABASE_URL = 'https://petfaclkzdudyvyhifaj.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_H6IVVyBLqTTsub1zH_igSw_EqimRQ9Y';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const APPROVAL_NOTIFY_URL = 'https://script.google.com/macros/s/AKfycbwH35o8pQiG6OK3YP3p41mu8dnVqWHlJ2hEY9oTXmWEZgqcW72cSBvbdbBnNilzEjQ6/exec';
+
+// ── BUYER INTAKE ──
+const BI_AGENT_EMAIL = 'mike@attorneybrokerservices.com';
+const BI_BASE_URL = 'https://ezzagent-tools.netlify.app/intake.html';
+const BI_PIN = '6202';
+
+function biShowView(view) {
+  document.getElementById('bi-view-new').classList.toggle('active', view === 'new');
+  document.getElementById('bi-view-submitted').classList.toggle('active', view === 'submitted');
+  document.getElementById('bi-tab-new').classList.toggle('active', view === 'new');
+  document.getElementById('bi-tab-submitted').classList.toggle('active', view === 'submitted');
+  if (view === 'submitted' && sessionStorage.getItem('bi_pin_ok') === '1') {
+    biShowSubmittedList();
+  }
+}
+
+async function biCreateLink() {
+  const address = document.getElementById('bi-address').value.trim();
+  const btn = document.getElementById('bi-create-btn');
+  const errorEl = document.getElementById('bi-create-error');
+  errorEl.style.display = 'none';
+
+  if (!address) {
+    errorEl.textContent = 'Enter a property address first.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Creating...';
+
+  try {
+    const { data, error } = await sb.rpc('create_intake', {
+      p_agent_email: BI_AGENT_EMAIL,
+      p_property_address: address
+    });
+
+    if (error) throw error;
+
+    const link = `${BI_BASE_URL}?id=${data}`;
+    document.getElementById('bi-link-output').value = link;
+    document.getElementById('bi-text-link').href = `sms:?body=${encodeURIComponent("Here's the link to share your offer details for " + address + ": " + link)}`;
+    document.getElementById('bi-email-link').href = `mailto:?subject=${encodeURIComponent("Quick form for " + address)}&body=${encodeURIComponent("Fill this out when you get a sec and I'll start drafting the offer: " + link)}`;
+    document.getElementById('bi-link-result').classList.add('visible');
+  } catch (err) {
+    console.error('Create intake link failed:', err);
+    errorEl.textContent = 'Something went wrong creating the link. Try again.';
+    errorEl.style.display = 'block';
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Create link';
+}
+
+function biCopyLink() {
+  const input = document.getElementById('bi-link-output');
+  navigator.clipboard.writeText(input.value).then(() => {
+    const btn = document.getElementById('bi-copy-btn');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+function biCheckPin() {
+  const input = document.getElementById('bi-pin-input').value.trim();
+  const errorEl = document.getElementById('bi-pin-error');
+  if (input === BI_PIN) {
+    sessionStorage.setItem('bi_pin_ok', '1');
+    biShowSubmittedList();
+  } else {
+    errorEl.classList.add('show');
+  }
+}
+
+function biShowSubmittedList() {
+  document.getElementById('bi-pin-gate').style.display = 'none';
+  document.getElementById('bi-submitted-list').style.display = 'block';
+  biLoadIntakes();
+}
+
+const BI_FIELD_LABELS = {
+  offer_price: 'Offer price',
+  cash_at_closing: 'Cash at closing',
+  financing_amount: 'Financing amount',
+  financing_type: 'Financing type',
+  earnest_money: 'Earnest money',
+  option_fee: 'Option fee',
+  option_period_days: 'Option period (days)',
+  closing_date: 'Target closing date',
+  property_condition: 'Property condition',
+  possession: 'Possession',
+  home_warranty_wanted: 'Home warranty wanted',
+  home_warranty_cap: 'Home warranty cap',
+  seller_concession: 'Seller concession ask'
+};
+
+function biEscapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function biRenderDetails(intake) {
+  const data = intake.offer_data || {};
+  let rows = '';
+  for (const key in BI_FIELD_LABELS) {
+    let val = data[key];
+    if (val === undefined || val === null || val === '') continue;
+    if (typeof val === 'boolean') val = val ? 'Yes' : 'No';
+    rows += `<div class="bi-detail-row"><span class="k">${BI_FIELD_LABELS[key]}</span><span class="v">${biEscapeHtml(String(val))}</span></div>`;
+  }
+  let notes = data.special_notes ? `<div class="bi-notes-box">${biEscapeHtml(data.special_notes)}</div>` : '';
+  let contact = `<div class="bi-detail-row"><span class="k">Phone</span><span class="v">${biEscapeHtml(intake.client_phone || '—')}</span></div>
+                 <div class="bi-detail-row"><span class="k">Email</span><span class="v">${biEscapeHtml(intake.client_email || '—')}</span></div>`;
+  return rows + contact + notes;
+}
+
+function biFormatDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function biBadgeClass(status) {
+  if (status === 'sent') return 'bi-badge-sent';
+  if (status === 'submitted') return 'bi-badge-submitted';
+  if (status === 'transferred') return 'bi-badge-transferred';
+  return '';
+}
+
+function biToggleDetails(idx) {
+  document.getElementById(`bi-details-${idx}`).classList.toggle('show');
+}
+
+async function biMarkTransferred(id) {
+  try {
+    const { error } = await sb.rpc('mark_intake_transferred', { p_id: id });
+    if (!error) biLoadIntakes();
+  } catch (err) {
+    console.error('Mark transferred failed:', err);
+  }
+}
+
+async function biLoadIntakes() {
+  const list = document.getElementById('bi-submitted-list');
+  list.innerHTML = `<div class="bi-empty">Loading...</div>`;
+
+  try {
+    const { data: intakes, error } = await sb.rpc('get_agent_intakes', { p_agent_email: BI_AGENT_EMAIL });
+    if (error) throw error;
+
+    if (!intakes || intakes.length === 0) {
+      list.innerHTML = `<div class="bi-empty">No intakes yet. Create a link from a showing to get started.</div>`;
+      return;
+    }
+
+    list.innerHTML = intakes.map((intake, idx) => {
+      const hasData = intake.status === 'submitted' || intake.status === 'transferred';
+      return `
+        <div class="bi-card">
+          <div class="bi-card-top">
+            <div>
+              <p class="bi-addr">${biEscapeHtml(intake.property_address)}</p>
+              <p class="bi-meta">${intake.client_name ? biEscapeHtml(intake.client_name) + ' — ' : ''}${biFormatDate(intake.submitted_at || intake.sent_at || intake.created_at)}</p>
+            </div>
+            <span class="bi-badge ${biBadgeClass(intake.status)}">${intake.status}</span>
+          </div>
+          ${hasData ? `<div class="bi-details" id="bi-details-${idx}">${biRenderDetails(intake)}</div>` : ''}
+          <div class="bi-card-actions">
+            ${hasData ? `<button onclick="biToggleDetails(${idx})">View details</button>` : ''}
+            ${intake.status === 'submitted' ? `<button class="primary" onclick="biMarkTransferred('${intake.id}')">Mark transferred</button>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    console.error('Load intakes failed:', err);
+    list.innerHTML = `<div class="bi-empty">Couldn't load intakes. Try refreshing.</div>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const pinInput = document.getElementById('bi-pin-input');
+  if (pinInput) {
+    pinInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') biCheckPin();
+    });
+  }
+});
+
+// ── TAB NAVIGATION ──
+function showTool(name) {
+  document.querySelectorAll('.tool-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const panel = document.getElementById('tool-' + name);
+  if (panel) panel.classList.add('active');
+  // Find the tab button whose onclick references this tool name, rather
+  // than relying on the implicit global `event` object -- that only
+  // works when called directly from an inline onclick, not when called
+  // programmatically (e.g. from a deep-link on page load).
+  document.querySelectorAll('.tab').forEach(t => {
+    const onclick = t.getAttribute('onclick') || '';
+    if (onclick.includes(`showTool('${name}')`)) t.classList.add('active');
+  });
+}
+
+// ── HELPERS ──
+function setLoading(btnEl, resultId, bodyId) {
+  btnEl.disabled = true;
+  btnEl.textContent = 'Generating...';
+  const card = document.getElementById(resultId);
+  const body = document.getElementById(bodyId);
+  card.classList.add('visible');
+  body.classList.add('loading');
+  body.textContent = 'Crafting your content...';
+}
+
+function setResult(btnEl, originalText, resultId, bodyId, text) {
+  btnEl.disabled = false;
+  btnEl.textContent = originalText;
+  const body = document.getElementById(bodyId);
+  body.classList.remove('loading');
+  body.textContent = text;
+}
+
+function copyResult(bodyId) {
+  const text = document.getElementById(bodyId).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btns = document.querySelectorAll('.btn-copy');
+    btns.forEach(b => { if (b.getAttribute('onclick') && b.getAttribute('onclick').includes(bodyId)) { const orig = b.textContent; b.textContent = 'Copied!'; setTimeout(() => b.textContent = orig, 2000); }});
+  });
+}
+
+function clearResult(resultId) {
+  document.getElementById(resultId).classList.remove('visible');
+}
+
+async function callClaude(prompt) {
+  const response = await fetch('/.netlify/functions/api', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  const data = await response.json();
+  if (data.error) throw new Error(data.error);
+  return data.content;
+}
+
+// ── TOOL: LISTING DESCRIPTION ──
+async function generateListing() {
+  const beds = document.getElementById('l-beds').value;
+  const baths = document.getElementById('l-baths').value;
+  const sqft = document.getElementById('l-sqft').value;
+  const city = document.getElementById('l-city').value;
+  const price = document.getElementById('l-price').value;
+  const year = document.getElementById('l-year').value;
+  const features = document.getElementById('l-features').value;
+  const neighborhood = document.getElementById('l-neighborhood').value;
+
+  if (!beds || !city || !features) { alert('Please fill in bedrooms, city, and key features.'); return; }
+
+  const btn = event.target;
+  setLoading(btn, 'result-listing', 'result-listing-body');
+
+  const prompt = `You are a top Texas real estate agent writing listing descriptions. Write THREE versions of a listing description for this property:
+
+Property: ${beds} bed / ${baths} bath, ${sqft} sq ft, built ${year}
+Location: ${city}
+Price: ${price}
+Key features: ${features}
+Neighborhood: ${neighborhood}
+
+Write exactly three versions labeled:
+VERSION 1 — FORMAL & PROFESSIONAL (150-180 words, sophisticated tone, highlights investment value)
+VERSION 2 — WARM & CONVERSATIONAL (150-180 words, inviting tone, paints a lifestyle picture)  
+VERSION 3 — SEO OPTIMIZED (150-180 words, naturally includes searchable terms like city name, bed/bath count, key features)
+
+Each version should be distinct, compelling, and ready to post. No generic filler phrases like "won't last long" or "priced to sell".`;
+
+  try {
+    const result = await callClaude(prompt);
+    setResult(btn, 'Generate Descriptions →', 'result-listing', 'result-listing-body', result);
+  } catch(err) {
+    setResult(btn, 'Generate Descriptions →', 'result-listing', 'result-listing-body', 'Error generating content. Please try again.');
+  }
+}
+
+// ── TOOL: CLIENT EMAIL ──
+async function generateEmail() {
+  const situation = document.getElementById('e-situation').value;
+  const client = document.getElementById('e-client').value;
+  const address = document.getElementById('e-address').value;
+  const details = document.getElementById('e-details').value;
+  const tone = document.getElementById('e-tone').value;
+
+  if (!situation || !client) { alert('Please select a situation and enter the client name.'); return; }
+
+  const situations = {
+    option_period: 'explaining what the option period is, what it means for the buyer, what they need to do, and key deadlines',
+    inspection_results: 'sharing inspection results, explaining what was found, and what is serious vs minor, so the buyer and their agent can decide together what to do next',
+    low_appraisal: 'explaining a low appraisal and laying out the options available (renegotiate price, buyer pays the difference, or cancel) so the buyer can discuss them with their agent and decide together',
+    multiple_offers: 'informing the buyer they are in a multiple offer situation, explaining what that generally means for timing and terms, and setting expectations — without telling them what to bid',
+    closing_delay: 'explaining a closing delay, the reason, the new timeline, and what the client needs to do',
+    offer_rejected: 'informing the buyer their offer was rejected, explaining what happened, and outlining the typical next steps to discuss with their agent',
+    contract_executed: 'explaining to a buyer what happens now that the contract is executed — option period, earnest money, inspection, financing timeline',
+    final_walkthrough: 'reminding the buyer about their final walkthrough, what to look for, and what to do if they find issues',
+    price_reduction: 'raising the idea of a price adjustment with a seller, summarizing relevant market activity (days on market, comparable activity) neutrally, and inviting a conversation about whether to adjust',
+    listing_expired: 'reaching out to a seller whose listing expired, empathizing, and discussing what to do differently'
+  };
+
+  const btn = event.target;
+  setLoading(btn, 'result-email', 'result-email-body');
+
+  const prompt = `You are a professional Texas real estate agent writing a client email. Write a ${tone} email for this situation:
+
+Situation: ${situations[situation]}
+Client name: ${client}
+Property: ${address || 'not specified'}
+Specific details to include: ${details || 'Use professional judgment for typical scenario'}
+Tone: ${tone === 'warm' ? 'Warm, empathetic, and reassuring — make them feel supported' : tone === 'professional' ? 'Professional, clear, and direct — get to the point efficiently' : 'Urgent but calm — convey time sensitivity without causing panic'}
+
+Write a complete email with:
+- Subject line
+- Greeting
+- Body (clear, helpful, specific)
+- Clear next steps or call to action
+- Professional sign-off
+
+Present information and options neutrally. Where a decision involves the client's money or strategy, invite a conversation rather than telling them what to do. Do NOT include placeholders like [Your Name] — use "Mike" as the agent name. Keep it under 250 words. No generic real estate clichés.`;
+
+  try {
+    const result = await callClaude(prompt);
+    setResult(btn, 'Draft Email →', 'result-email', 'result-email-body', result);
+  } catch(err) {
+    setResult(btn, 'Draft Email →', 'result-email', 'result-email-body', 'Error generating email. Please try again.');
+  }
+}
+
+// ── TOOL: OFFER STRENGTH ──
+async function analyzeOffer() {
+  const listprice = document.getElementById('o-listprice').value;
+  const offerprice = document.getElementById('o-offerprice').value;
+  const dom = document.getElementById('o-dom').value;
+  const offers = document.getElementById('o-offers').value;
+  const city = document.getElementById('o-city').value;
+  const option = document.getElementById('o-option').value;
+  const optionfee = document.getElementById('o-optionfee').value;
+  const earnest = document.getElementById('o-earnest').value;
+  const finance = document.getElementById('o-finance').value;
+  const closing = document.getElementById('o-closing').value;
+  const concessions = document.getElementById('o-concessions').value;
+  const type = document.getElementById('o-type').value;
+
+  if (!listprice || !offerprice) { alert('Please enter list price and offer price.'); return; }
+
+  const btn = event.target;
+  setLoading(btn, 'result-offer', 'result-offer-body');
+
+  const prompt = `Analyze this real estate offer for competitiveness based on the data provided. Be direct and specific, grounded only in the numbers given.
+
+LISTING DETAILS:
+- Property type: ${type}
+- List price: ${listprice}
+- Days on market: ${dom || 'unknown'}
+- Known competing offers: ${offers || 'unknown'}
+- Market area: ${city || 'DFW Texas'}
+
+OFFER DETAILS:
+- Offer price: ${offerprice}
+- Finance type: ${finance}
+- Option period: ${option} days
+- Option fee: $${optionfee}
+- Earnest money: $${earnest}
+- Closing timeline: ${closing}
+- Concessions/special terms: ${concessions || 'none'}
+
+Provide:
+1. OVERALL STRENGTH RATING: Weak / Moderate / Strong / Very Strong — with one sentence explanation based on the numbers above
+2. WHAT'S WORKING: 2-3 specific strengths of this offer, based only on the data given
+3. WHAT'S HURTING YOU: 2-3 specific weaknesses or risks, based only on the data given
+4. THINGS TO CONSIDER: 3 specific factors the agent and client may want to discuss to strengthen this offer
+
+Be specific and practical. Do not claim personal experience, tenure, or transaction history. Base every point strictly on the inputs provided, and note where local market knowledge beyond these numbers would be needed to go further.`;
+
+  try {
+    const result = await callClaude(prompt);
+    setResult(btn, 'Analyze My Offer →', 'result-offer', 'result-offer-body', result);
+  } catch(err) {
+    setResult(btn, 'Analyze My Offer →', 'result-offer', 'result-offer-body', 'Error analyzing offer. Please try again.');
+  }
+}
+
+// ── TOOL: NET SHEET ──
+function parseNum(id) {
+  const val = document.getElementById(id).value.replace(/[$,]/g, '');
+  return parseFloat(val) || 0;
+}
+
+function fmt(num) {
+  return '$' + Math.round(num).toLocaleString();
+}
+
+document.getElementById('oh-date').value = new Date().toISOString().split('T')[0];
+
+// ── TOOL: OPEN HOUSE FOLLOW-UP ──
+async function generateOpenHouse() {
+  const address = document.getElementById('oh-address').value;
+  const visitor = document.getElementById('oh-visitor').value;
+  const date = document.getElementById('oh-date').value;
+  const interest = document.getElementById('oh-interest').value;
+  const notes = document.getElementById('oh-notes').value;
+  const tone = document.getElementById('oh-tone').value;
+
+  if (!visitor || !address) { alert('Please enter the visitor name and property address.'); return; }
+
+  const interestMap = {
+    very: 'very interested — asked lots of questions and spent significant time at the property',
+    moderate: 'moderately interested — looked around and seemed to like the property',
+    browsing: 'early in their search and just browsing',
+    investor: 'evaluating the property as a potential investment'
+  };
+
+  const toneMap = {
+    warm: 'Warm and personal — make them feel remembered and valued as an individual, not just another open house visitor',
+    professional: 'Professional and direct — respectful of their time, clear next steps',
+    urgent: 'Warm but with a subtle sense of urgency — mention there has been other interest in the property without being pushy'
+  };
+
+  const btn = event.target;
+  setLoading(btn, 'result-openhouse', 'result-openhouse-body');
+
+  const formattedDate = date ? new Date(date + 'T00:00:00').toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'}) : 'recently';
+
+  const prompt = `You are a professional Texas real estate agent writing a personalized follow-up email to someone who visited your open house.
+
+Open house details:
+- Property: ${address}
+- Date: ${formattedDate}
+- Visitor name: ${visitor}
+- Interest level: ${interestMap[interest]}
+- Notes from the visit: ${notes || 'No specific notes — use typical open house follow-up context'}
+- Tone: ${toneMap[tone]}
+
+Write a complete, personalized follow-up email with:
+- Subject line
+- Personal greeting using their first name
+- Reference something specific about their visit or the property that makes it feel personal, not generic
+- Address any concerns or questions they mentioned
+- Clear, low-pressure next step (schedule a private showing, answer questions, check on financing)
+- Warm professional sign-off
+
+Sign the email as Mike, Texas real estate agent. Keep it under 200 words. Do NOT use generic phrases like "Don't miss out" or "Act fast." Make it feel like a genuine personal note, not a mass email.`;
+
+  try {
+    const result = await callClaude(prompt);
+    setResult(btn, 'Generate Follow-Up Email →', 'result-openhouse', 'result-openhouse-body', result);
+  } catch(err) {
+    setResult(btn, 'Generate Follow-Up Email →', 'result-openhouse', 'result-openhouse-body', 'Error generating email. Please try again.');
+  }
+}
+
+// ── PROPERTY SCOUT ──
+let currentProperty = null;
+const PS_GAS_URL = 'https://script.google.com/macros/s/AKfycbzSxnceaZyEQf7bNLN33vmynC3yBeYnEs6NUICj0vhhY1u50g0G-C7JQk86qvhosfm1ew/exec';
+
+document.getElementById('ps-address-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') searchProperty();
+});
+
+async function searchProperty() {
+  const address = document.getElementById('ps-address-input').value.trim();
+  if (!address) {
+    document.getElementById('ps-address-input').style.borderColor = 'var(--red)';
+    return;
+  }
+  document.getElementById('ps-address-input').style.borderColor = '';
+
+  const btn = document.getElementById('ps-search-btn');
+  btn.disabled = true;
+  btn.textContent = 'Searching...';
+
+  document.getElementById('ps-result-area').innerHTML = '<div class="ps-loading"><div class="ps-spinner"></div>Looking up property data...</div>';
+
+  try {
+    const res = await fetch('/.netlify/functions/property-scout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      document.getElementById('ps-result-area').innerHTML = `<div class="ps-error-card">${data.error || 'Property not found. Try including city and state.'}</div>`;
+      btn.disabled = false;
+      btn.textContent = 'Search →';
+      return;
+    }
+
+    currentProperty = data.property;
+    renderPropertyReport(data);
+
+  } catch(err) {
+    console.error('Property Scout error:', err);
+    document.getElementById('ps-result-area').innerHTML = `<div class="ps-error-card">Something went wrong: ${err.message}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Search →';
+}
+
+function renderPsTaxSection(p) {
+  if (!p.propertyTaxes) return '';
+  const years = Object.keys(p.propertyTaxes).sort((a, b) => b - a).slice(0, 3);
+  if (years.length === 0) return '';
+
+  const rows = years.map(year => {
+    const t = p.propertyTaxes[year];
+    return `<tr>
+      <td>${year}</td>
+      <td class="price">${t.total ? '$' + t.total.toLocaleString() : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="ps-section">
+      <div class="ps-section-header">
+        <span class="ps-section-title">Property Tax History</span>
+      </div>
+      <table class="ps-history-table">
+        <thead><tr><th>Year</th><th>Total Tax</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function fmtCurrency(n) { return n != null ? '$' + Number(n).toLocaleString() : null; }
+
+const FLOOD_ZONE_LABELS = {
+  X: { label: 'Zone X — Minimal Flood Hazard', cls: 'safe' },
+  AE: { label: 'Zone AE — High Risk (100-yr Floodplain)', cls: 'risk' },
+  A: { label: 'Zone A — High Risk (100-yr Floodplain)', cls: 'risk' },
+  A99: { label: 'Zone A99 — Protected Area', cls: 'caution' },
+  VE: { label: 'Zone VE — Coastal High Risk', cls: 'risk' },
+  V: { label: 'Zone V — Coastal High Risk', cls: 'risk' },
+  AH: { label: 'Zone AH — Moderate Risk', cls: 'caution' },
+  AO: { label: 'Zone AO — Moderate Risk', cls: 'caution' },
+  D: { label: 'Zone D — Undetermined Risk', cls: 'caution' },
+};
+
+const RADON_LABELS = {
+  '1': { label: 'Zone 1 — Highest Potential (>4 pCi/L)', cls: 'risk' },
+  '2': { label: 'Zone 2 — Moderate Potential (2–4 pCi/L)', cls: 'caution' },
+  '3': { label: 'Zone 3 — Low Potential (<2 pCi/L)', cls: 'safe' },
+};
+
+const NEIGHBORHOOD_ITEMS = [
+  { key: 'transit', label: 'Nearest Transit', icon: '🚌' },
+  { key: 'grocery', label: 'Nearest Grocery', icon: '🛒' },
+  { key: 'pharmacy', label: 'Nearest Pharmacy', icon: '💊' },
+  { key: 'hospital', label: 'Nearest Hospital / ER', icon: '🏥' },
+  { key: 'school', label: 'Nearest School', icon: '🏫' },
+  { key: 'park', label: 'Nearest Park', icon: '🌳' },
+];
+
+function toggleCollapse(id) {
+  const body = document.getElementById('body-' + id);
+  const chevron = document.getElementById('chev-' + id);
+  body.classList.toggle('open');
+  chevron.classList.toggle('open');
+}
+
+function renderHazardSection(hazards) {
+  if (!hazards) return '';
+  const femaInfo = FLOOD_ZONE_LABELS[hazards.femaFloodZone] || { label: `Zone ${hazards.femaFloodZone}`, cls: 'caution' };
+  const radonInfo = RADON_LABELS[hazards.radonZone] || null;
+  const superfundSites = hazards.superfundSites || [];
+
+  return `
+    <div class="ps-collapse">
+      <button class="ps-collapse-header" onclick="toggleCollapse('hazard')">
+        <div class="ps-collapse-title-wrap">
+          <span class="ps-collapse-badge" style="background:#FCEBEB;color:var(--red);">Risk Audit</span>
+          <span class="ps-collapse-title">FEMA + EPA Hazards</span>
+        </div>
+        <span class="ps-collapse-chevron" id="chev-hazard">▼</span>
+      </button>
+      <div class="ps-collapse-body" id="body-hazard">
+        <div class="ps-hazard-row">
+          <div class="ps-hazard-label">FEMA Flood Zone</div>
+          <div class="ps-hazard-val ${femaInfo.cls}">${femaInfo.label}</div>
+          ${hazards.femaFloodZone !== 'X' ? '<div class="ps-hazard-note">Flood insurance may be required for federally-backed loans.</div>' : ''}
+          <div class="ps-hazard-source">Source: FEMA National Flood Hazard Layer (NFHL)</div>
+        </div>
+        <div class="ps-hazard-row">
+          <div class="ps-hazard-label">EPA Superfund Sites (5mi)</div>
+          ${superfundSites.length === 0
+            ? '<div class="ps-hazard-val safe">None detected within 5 miles</div>'
+            : superfundSites.map(s => `<div class="ps-hazard-val risk" style="margin-bottom:4px;">${s.name} — ${[s.city, s.state].filter(Boolean).join(', ')}</div>`).join('')}
+          <div class="ps-hazard-source">Source: EPA Facility Registry Service (FRS) · NPL sites only</div>
+        </div>
+        <div class="ps-hazard-row">
+          <div class="ps-hazard-label">EPA Radon Zone</div>
+          <div class="ps-hazard-val ${radonInfo ? radonInfo.cls : 'caution'}">${radonInfo ? radonInfo.label : 'Information Unavailable'}</div>
+          ${hazards.radonZone === '1' ? '<div class="ps-hazard-note">High-potential zone — EPA recommends testing before purchase.</div>' : ''}
+          <div class="ps-hazard-source">Source: EPA Map of Radon Zones (county-level)</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderMarketSection(market) {
+  if (!market) return '';
+  const hasAnyData = market.domBaseline != null || market.zipMedianPricePerSqft != null || market.totalListings != null || market.bedroomComp || market.rentalSnapshot?.medianRent != null;
+  if (!hasAnyData) return '';
+
+  return `
+    <div class="ps-collapse">
+      <button class="ps-collapse-header" onclick="toggleCollapse('market')">
+        <div class="ps-collapse-title-wrap">
+          <span class="ps-collapse-badge" style="background:var(--teal-light);color:var(--teal);">Market</span>
+          <span class="ps-collapse-title">Market Intelligence</span>
+        </div>
+        <span class="ps-collapse-chevron" id="chev-market">▼</span>
+      </button>
+      <div class="ps-collapse-body" id="body-market">
+        ${market.marketStatus ? `<div class="ps-market-row"><span class="label">Market status (DOM-based)</span><span class="value">${market.marketStatus}${market.domBaseline ? ' · ' + market.domBaseline + ' avg DOM' : ''}</span></div>` : ''}
+        ${market.zipMedianPricePerSqft ? `<div class="ps-market-row"><span class="label">ZIP median $/sqft</span><span class="value">$${market.zipMedianPricePerSqft}/sqft</span></div>` : ''}
+        ${market.subjectPricePerSqft ? `<div class="ps-market-row"><span class="label">This property $/sqft (assessed)</span><span class="value">$${market.subjectPricePerSqft}/sqft</span></div>` : ''}
+        ${market.totalListings != null ? `<div class="ps-market-row"><span class="label">Active listings (ZIP)</span><span class="value">${market.totalListings}${market.newListings != null ? ' · ' + market.newListings + ' new' : ''}</span></div>` : ''}
+        ${market.bedroomComp ? `<div class="ps-market-row"><span class="label">${market.bedroomComp.bedrooms}-bed median (ZIP)</span><span class="value">${fmtCurrency(market.bedroomComp.medianPrice)}</span></div>` : ''}
+        ${market.rentalSnapshot?.medianRent != null ? `<div class="ps-market-row"><span class="label">Median rent (ZIP)</span><span class="value">${fmtCurrency(market.rentalSnapshot.medianRent)}/mo</span></div>` : ''}
+        <div class="ps-hazard-source" style="margin-top:6px;">Source: RentCast · ZIP-level market data</div>
+      </div>
+    </div>`;
+}
+
+function renderNeighborhoodSection(neighborhood) {
+  if (!neighborhood) return '';
+
+  const cards = NEIGHBORHOOD_ITEMS.map(item => {
+    const d = neighborhood[item.key];
+    if (!d || !d.name) {
+      return `<div class="ps-amenity-card"><div class="ps-amenity-label">${item.icon} ${item.label}</div><div class="ps-amenity-empty">None found within 5 miles</div></div>`;
+    }
+    return `
+      <div class="ps-amenity-card">
+        <div class="ps-amenity-label">${item.icon} ${item.label}</div>
+        <div class="ps-amenity-name">${d.name}</div>
+        <div class="ps-amenity-meta">
+          ${d.distanceMiles != null ? `<span>${d.distanceMiles} mi</span>` : ''}
+          ${d.rating ? `<span class="ps-amenity-rating">★ ${d.rating}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="ps-collapse">
+      <button class="ps-collapse-header" onclick="toggleCollapse('neighborhood')">
+        <div class="ps-collapse-title-wrap">
+          <span class="ps-collapse-badge" style="background:var(--purple-light);color:var(--purple);">Neighborhood</span>
+          <span class="ps-collapse-title">Amenities & Proximity</span>
+        </div>
+        <span class="ps-collapse-chevron" id="chev-neighborhood">▼</span>
+      </button>
+      <div class="ps-collapse-body" id="body-neighborhood">
+        <div class="ps-amenity-grid">${cards}</div>
+        <div class="ps-hazard-source" style="margin-top:8px;">Source: Google Places API · Nearest match per category within 5 miles</div>
+      </div>
+    </div>`;
+}
+
+function renderPropertyReport(data) {
+  const p = data.property || data; // fallback for safety
+  const images = data.images || {};
+  const hazards = data.hazards || null;
+  const marketData = data.marketData || null;
+  const neighborhood = data.neighborhood || null;
+
+  const ownerName = p.owner?.names?.join(', ') || p.owner?.name || p.ownerName || '—';
+  const ownerType = p.owner?.type || p.ownerType || null;
+  const propertyAddress = p.formattedAddress || p.addressLine1 || '';
+
+  const historyEntries = p.history ? Object.values(p.history) : [];
+  historyEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const historyRows = historyEntries.length > 0 ? historyEntries.slice(0, 6).map(h => `
+    <tr>
+      <td>${h.date ? new Date(h.date).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : '—'}</td>
+      <td class="price">${h.price ? '$' + h.price.toLocaleString() : '—'}</td>
+      <td>${h.event || '—'}</td>
+    </tr>`).join('') : '<tr><td colspan="3" style="color:var(--muted); font-size:12.5px; padding:1rem 0;">No sale history available in public records</td></tr>';
+
+  const lastSaleEntry = historyEntries.find(h => h.event && h.event.toLowerCase().includes('sale'));
+  const ownershipYears = p.lastSaleDate ? Math.floor((new Date() - new Date(p.lastSaleDate)) / (365.25 * 24 * 60 * 60 * 1000)) : null;
+  const lastSalePrice = p.lastSalePrice || lastSaleEntry?.price || null;
+  const calculatedAcreage = p.lotSize ? (p.lotSize / 43560).toFixed(3) : null;
+
+  const photoHtml = images.streetview
+    ? `<div class="ps-photo-wrap"><img src="${images.streetview}" alt="Street view of ${propertyAddress}" loading="lazy"></div>`
+    : '';
+
+  document.getElementById('ps-result-area').innerHTML = `
+    ${photoHtml}
+
+    <div class="ps-report-header">
+      <div class="ps-report-address">${propertyAddress || 'Address'}</div>
+      <div class="ps-report-sub">${p.county || ''} County · ${p.propertyType || 'Residential'}</div>
+      <div class="ps-report-meta">
+        ${p.propertyType ? `<span class="ps-tag">${p.propertyType}</span>` : ''}
+        ${ownerType ? `<span class="ps-tag">Owner: ${ownerType}</span>` : ''}
+        ${p.lastSaleDate ? `<span class="ps-tag">Last sold ${new Date(p.lastSaleDate).getFullYear()}</span>` : ''}
+      </div>
+    </div>
+
+    <div class="ps-section">
+      <div class="ps-section-header"><span class="ps-section-title">Core Identity & Legal</span></div>
+      <div class="ps-stats-grid" style="margin-bottom:10px;">
+        <div class="ps-stat"><div class="ps-stat-label">APN / Tax Account</div><div class="ps-stat-val">${p.assessorID || p.apn || '—'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Property type</div><div class="ps-stat-val">${p.propertyType || '—'}</div></div>
+      </div>
+      <div style="background:var(--cream); border:1px solid var(--border); border-radius:8px; padding:11px 13px;">
+        <div style="font-size:10.5px; color:var(--muted); margin-bottom:4px;">Legal Description</div>
+        <div style="font-size:13px; font-weight:700; color:var(--ink); margin-bottom:5px;">${p.legalDescription || '—'}</div>
+        <div style="font-size:10.5px; color:#9A6A00; font-weight:600;">Public Record · Verify with county CAD before contract</div>
+      </div>
+    </div>
+
+    <div class="ps-section">
+      <div class="ps-section-header"><span class="ps-section-title">Property Details</span></div>
+      <div class="ps-stats-grid">
+        <div class="ps-stat"><div class="ps-stat-label">Year built</div><div class="ps-stat-val">${p.yearBuilt || '—'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Sq footage</div><div class="ps-stat-val">${p.squareFootage ? p.squareFootage.toLocaleString() + ' sqft' : '—'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Bedrooms</div><div class="ps-stat-val">${p.bedrooms || '—'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Bathrooms</div><div class="ps-stat-val">${p.bathrooms || '—'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Lot size</div><div class="ps-stat-val">${p.lotSize ? p.lotSize.toLocaleString() + ' sqft' : '—'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Calculated acreage</div><div class="ps-stat-val">${calculatedAcreage ? calculatedAcreage + ' ac' : '—'}</div></div>
+      </div>
+    </div>
+
+    <div class="ps-section">
+      <div class="ps-section-header"><span class="ps-section-title">Ownership & Transfer History</span></div>
+      <div class="ps-stats-grid" style="margin-bottom:10px;">
+        <div class="ps-stat"><div class="ps-stat-label">Owner name</div><div class="ps-stat-val">${ownerName}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Ownership length</div><div class="ps-stat-val">${ownershipYears !== null ? ownershipYears + ' yrs' : '—'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Last sale price</div><div class="ps-stat-val">${lastSalePrice ? '$' + lastSalePrice.toLocaleString() : '—'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Last sale date</div><div class="ps-stat-val">${p.lastSaleDate ? new Date(p.lastSaleDate).toLocaleDateString('en-US', {month:'short', year:'numeric'}) : '—'}</div></div>
+      </div>
+      <table class="ps-history-table">
+        <thead><tr><th>Date</th><th>Price</th><th>Type</th></tr></thead>
+        <tbody>${historyRows}</tbody>
+      </table>
+    </div>
+
+    <div class="ps-data-source">
+      <span>Data sourced from public records via RentCast. This report is for informational purposes only and does not constitute a professional appraisal, legal advice, or a representation of value. Always verify all information against county appraisal district and official government records before use in a transaction.</span>
+    </div>
+
+    ${renderPsTaxSection(p)}
+    ${renderHazardSection(hazards)}
+    ${renderMarketSection(marketData)}
+    ${renderNeighborhoodSection(neighborhood)}
+
+    <button class="ps-share-btn" onclick="openModal('modal-before-send')">Share with Client</button>
+
+    <div class="ps-disclaimer">
+      EzzAgent Tools is a data tool, not a legal or brokerage advisor. Always consult your broker before sharing property data with consumers. IABS delivery required under Texas law prior to sharing.
+    </div>`;
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function proceedToModal2() {
+  const name = document.getElementById('consumer-name-1').value.trim();
+  if (!name) {
+    document.getElementById('consumer-name-1').style.borderColor = 'var(--red)';
+    return;
+  }
+  document.getElementById('consumer-name-1').style.borderColor = '';
+  document.getElementById('consumer-name-2').value = name;
+  closeModal('modal-before-send');
+  openModal('modal-share');
+}
+
+async function confirmShare() {
+  const name = document.getElementById('consumer-name-2').value.trim();
+  const email = document.getElementById('consumer-email').value.trim();
+  const confirmed = document.getElementById('iabs-confirm').checked;
+
+  if (!name) { document.getElementById('consumer-name-2').style.borderColor = 'var(--red)'; return; }
+  if (!email || !email.includes('@')) { document.getElementById('consumer-email').style.borderColor = 'var(--red)'; return; }
+  if (!confirmed) { document.getElementById('iabs-confirm').parentElement.style.color = 'var(--red)'; return; }
+
+  const btn = document.getElementById('modal-2-btn');
+  btn.textContent = 'Sending...';
+  btn.disabled = true;
+
+  try {
+    await fetch(PS_GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'propertyScoutShare',
+        consumerName: name,
+        consumerEmail: email,
+        address: currentProperty?.formattedAddress || '',
+        agentConfirmed: true,
+        timestamp: new Date().toISOString()
+      })
+    });
+  } catch(e) {}
+
+  document.getElementById('success-email').textContent = email;
+  closeModal('modal-share');
+  openModal('modal-success');
+
+  btn.textContent = 'Share Report ✓';
+  btn.disabled = false;
+}
+
+// ── DEEP LINKING ──
+// Reads ?tool=NAME from the URL on load and jumps straight to that
+// tool's tab, so Agent Shield can link directly to a specific tool
+// instead of always landing on Property Scout.
+// Valid values: scout, listing, email, offer, openhouse, buyerintake
+(function initDeepLink() {
+  const params = new URLSearchParams(window.location.search);
+  const tool = params.get('tool');
+  const validTools = ['scout', 'listing', 'email', 'offer', 'openhouse', 'buyerintake'];
+  if (tool && validTools.includes(tool)) {
+    showTool(tool);
+  }
+})();
+</script>
+
+</body>
+</html>
