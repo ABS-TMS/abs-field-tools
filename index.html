@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ABS Field Tools</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0C3057">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ABS Field">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy: #0C3057;
+  --navy-dark: #07203D;
+  --gold: #C8922A;
+  --gold-light: #F3E3BC;
+  --cream: #F7F5EF;
+  --white: #FFFFFF;
+  --ink: #1C2230;
+  --muted: #5F5E5A;
+  --border: #E5E3DA;
+  --teal: #0F6E56;
+  --teal-light: #E1F5EE;
+  --purple: #3C3489;
+  --purple-light: #EEEDFE;
+  --red: #A32D2D;
+  --red-light: #FCEBEB;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+body { font-family: var(--font); background: var(--cream); color: var(--ink); min-height: 100vh; padding-bottom: 70px; }
+
+/* HEADER */
+header { background: var(--navy); padding: 14px 16px; padding-top: max(14px, env(safe-area-inset-top)); display: flex; align-items: center; gap: 10px; border-bottom: 3px solid var(--gold); position: sticky; top: 0; z-index: 50; }
+.logo-badge { width: 30px; height: 30px; border-radius: 7px; background: var(--gold); display: flex; align-items: center; justify-content: center; color: var(--navy); font-weight: 700; font-size: 13px; flex-shrink: 0; }
+.logo-text { font-size: 13.5px; font-weight: 600; color: var(--white); }
+.logo-text span { color: var(--gold); }
+.header-sub { font-size: 10.5px; color: rgba(255,255,255,0.55); margin-top: 1px; }
+
+/* BOTTOM TAB BAR -- mobile app pattern, not desktop top-tabs */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--white); border-top: 1px solid var(--border);
+  display: flex; padding-bottom: env(safe-area-inset-bottom);
+  z-index: 50;
+}
+.bottom-nav button {
+  flex: 1; padding: 11px 4px 8px; background: none; border: none;
+  font-family: inherit; font-size: 11.5px; font-weight: 600; color: var(--muted);
+  display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer;
+}
+.bottom-nav button .nav-icon { font-size: 19px; line-height: 1; }
+.bottom-nav button.active { color: var(--navy); }
+.bottom-nav button.active .nav-icon { color: var(--gold); }
+
+/* MAIN */
+.main { max-width: 600px; margin: 0 auto; padding: 16px 14px 24px; }
+.tool-panel { display: none; }
+.tool-panel.active { display: block; }
+
+.tool-header { margin-bottom: 18px; }
+.tool-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+.tool-title { font-family: Georgia, serif; font-size: 23px; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+.tool-desc { font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+/* FORM CARD */
+.form-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 14px; }
+.form-row { margin-bottom: 12px; }
+.form-row label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.form-row input, .form-row select, .form-row textarea {
+  width: 100%; padding: 12px 13px; background: var(--cream);
+  border: 1px solid var(--border); border-radius: 8px;
+  font-size: 15px; color: var(--ink); font-family: inherit;
+}
+.form-row input:focus, .form-row select:focus, .form-row textarea:focus { outline: none; border-color: var(--gold); background: var(--white); }
+
+/* BUTTONS */
+.btn-submit { width: 100%; padding: 14px; background: var(--navy); color: white; font-size: 14px; font-weight: 600; border: none; border-radius: 9px; cursor: pointer; font-family: inherit; }
+.btn-submit:disabled { background: #B4B2A9; }
+.btn-copy { padding: 8px 16px; background: transparent; color: var(--navy); border: 1px solid var(--border); border-radius: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: inherit; }
+
+/* PROPERTY SCOUT */
+.search-row { display: flex; gap: 8px; }
+.search-row input { flex: 1; }
+.search-btn { white-space: nowrap; font-size: 13.5px; font-weight: 600; background: var(--navy); color: var(--white); border: none; border-radius: 8px; padding: 0 16px; cursor: pointer; }
+.search-btn:disabled { background: #B4B2A9; }
+.ps-loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; padding: 1.5rem 0; justify-content: center; }
+.ps-spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.ps-error-card { background: var(--red-light); border: 1px solid #F0C9C9; border-radius: 8px; padding: 11px 14px; font-size: 13px; color: var(--red); margin-bottom: 1rem; }
+.ps-report-header { background: var(--navy); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+.ps-report-address { font-size: 15px; font-weight: 700; color: var(--white); margin-bottom: 3px; }
+.ps-report-sub { font-size: 11.5px; color: rgba(255,255,255,0.6); }
+.ps-report-meta { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.ps-tag { font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,0.12); color: var(--gold-light); }
+.ps-section { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+.ps-section-header { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; padding-bottom: 7px; border-bottom: 1px solid var(--cream); }
+.ps-section-title { font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.ps-stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.ps-stat { background: var(--cream); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
+.ps-stat-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
+.ps-stat-val { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.ps-history-table { width: 100%; border-collapse: collapse; }
+.ps-history-table th { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; padding: 5px 0; text-align: left; border-bottom: 1px solid var(--border); }
+.ps-history-table td { font-size: 12.5px; color: var(--ink); padding: 7px 0; border-bottom: 1px solid var(--cream); }
+.ps-history-table td.price { font-weight: 700; color: var(--navy); }
+.ps-data-source { background: var(--cream); border: 1px solid var(--border); border-radius: 8px; padding: 9px 13px; font-size: 11px; color: var(--muted); line-height: 1.5; margin-bottom: 14px; }
+.ps-share-btn { display: block; width: 100%; background: var(--navy); color: var(--white); font-size: 14px; font-weight: 600; padding: 13px; border: none; border-radius: 10px; cursor: pointer; text-align: center; margin-bottom: 14px; }
+.ps-disclaimer { font-size: 11px; color: var(--muted); line-height: 1.55; font-style: italic; text-align: center; padding-bottom: 8px; }
+.ps-photo-wrap { border-radius: 10px; overflow: hidden; margin-bottom: 14px; border: 1px solid var(--border); background: var(--cream); }
+.ps-photo-wrap img { width: 100%; display: block; max-height: 220px; object-fit: cover; }
+
+.ps-collapse { background: var(--white); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; overflow: hidden; }
+.ps-collapse-header { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; cursor: pointer; background: none; border: none; font-family: inherit; text-align: left; }
+.ps-collapse-title-wrap { display: flex; align-items: center; gap: 8px; }
+.ps-collapse-badge { font-size: 9.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; }
+.ps-collapse-title { font-size: 12px; font-weight: 700; color: var(--ink); }
+.ps-collapse-chevron { font-size: 12px; color: var(--muted); transition: transform 0.15s; }
+.ps-collapse-chevron.open { transform: rotate(180deg); }
+.ps-collapse-body { display: none; padding: 4px 14px 14px; }
+.ps-collapse-body.open { display: block; }
+
+.ps-hazard-row { padding: 9px 0; border-bottom: 1px solid var(--cream); }
+.ps-hazard-row:last-child { border-bottom: none; }
+.ps-hazard-label { font-size: 11px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+.ps-hazard-val { font-size: 12.5px; font-weight: 600; }
+.ps-hazard-val.safe { color: var(--teal); }
+.ps-hazard-val.risk { color: var(--red); }
+.ps-hazard-val.caution { color: #9A6A00; }
+.ps-hazard-source { font-size: 9.5px; color: var(--muted); margin-top: 2px; }
+.ps-hazard-note { font-size: 10.5px; color: var(--red); margin-top: 2px; }
+
+.ps-amenity-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ps-amenity-card { background: var(--cream); border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; }
+.ps-amenity-label { font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+.ps-amenity-name { font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 1px; }
+.ps-amenity-meta { font-size: 10px; color: var(--muted); display: flex; gap: 6px; }
+.ps-amenity-empty { font-size: 11px; color: var(--muted); font-style: italic; }
+
+.ps-market-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--cream); font-size: 12px; }
+.ps-market-row .label { color: var(--muted); }
+.ps-market-row .value { font-weight: 700; color: var(--ink); }
+
+/* MODALS */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100; align-items: flex-end; justify-content: center; }
+.modal-overlay.active { display: flex; }
+.modal { background: var(--white); border-radius: 16px 16px 0 0; max-width: 600px; width: 100%; max-height: 88vh; overflow-y: auto; padding: 1.4rem 1.2rem; padding-bottom: max(1.4rem, env(safe-area-inset-bottom)); position: relative; }
+.modal-close { position: absolute; top: 1rem; right: 1rem; background: var(--cream); border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-size: 14px; }
+.modal h2 { font-family: Georgia, serif; font-size: 17px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+.modal-alert { background: var(--gold-light); border: 1px solid #E8D098; border-radius: 8px; padding: 11px 13px; margin-bottom: 1rem; }
+.modal-alert h3 { font-size: 12px; font-weight: 700; color: #6B4E00; margin-bottom: 3px; }
+.modal-alert p { font-size: 11.5px; color: #6B4E00; line-height: 1.5; }
+.modal-items { margin-bottom: 1rem; }
+.modal-item { padding: 8px 0; border-bottom: 1px solid var(--cream); }
+.modal-item h4 { font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 3px; }
+.modal-item p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.modal-fields { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem; }
+.modal-field label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.modal-field input { width: 100%; font-family: inherit; font-size: 15px; color: var(--ink); background: var(--cream); border: 1px solid var(--border); border-radius: 8px; padding: 11px 12px; }
+.modal-check { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 1rem; }
+.modal-check input { margin-top: 3px; width: 16px; height: 16px; }
+.modal-check label { font-size: 12px; color: var(--muted); line-height: 1.45; }
+.modal-btn { display: block; width: 100%; background: var(--navy); color: white; font-size: 14px; font-weight: 600; padding: 13px; border: none; border-radius: 9px; cursor: pointer; }
+.modal-citation { font-size: 10.5px; color: var(--purple); font-weight: 600; }
+
+/* BUYER INTAKE */
+.bi-toggle { display: flex; margin-bottom: 16px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.bi-toggle button { flex: 1; padding: 10px; font-size: 12.5px; font-weight: 600; border: none; background: var(--white); color: var(--muted); cursor: pointer; font-family: inherit; }
+.bi-toggle button.active { background: var(--navy); color: var(--white); }
+.bi-view { display: none; }
+.bi-view.active { display: block; }
+.bi-link-result { display: none; margin-top: 12px; }
+.bi-link-result.visible { display: block; }
+.bi-link-box { display: flex; gap: 8px; align-items: center; background: var(--cream); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+.bi-link-box input { flex: 1; border: none; background: none; font-size: 12px; color: var(--navy); font-family: monospace; padding: 0; outline: none; }
+.bi-share-row { display: flex; gap: 8px; }
+.bi-share-row a { flex: 1; text-align: center; padding: 11px; border-radius: 8px; font-size: 13.5px; font-weight: 600; text-decoration: none; font-family: inherit; }
+.bi-share-text { background: var(--navy); color: var(--white); }
+.bi-share-email { background: var(--white); color: var(--navy); border: 1px solid var(--border); }
+.bi-pin-card { max-width: 280px; margin: 0 auto; text-align: center; }
+.bi-pin-card input { width: 100%; padding: 13px; font-size: 18px; text-align: center; letter-spacing: 4px; margin-bottom: 12px; }
+.bi-pin-error { color: var(--red); font-size: 12.5px; margin-top: 8px; display: none; }
+.bi-pin-error.show { display: block; }
+.bi-card { background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 13px 15px; margin-bottom: 10px; }
+.bi-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.bi-addr { font-weight: 700; font-size: 13px; color: var(--navy); margin: 0; }
+.bi-meta { font-size: 10.5px; color: var(--muted); margin: 2px 0 0; }
+.bi-badge { font-size: 9.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; flex-shrink: 0; }
+.bi-badge-sent { background: #FAEEDA; color: #854F0B; }
+.bi-badge-submitted { background: var(--teal-light); color: var(--teal); }
+.bi-badge-transferred { background: var(--cream); color: var(--muted); }
+.bi-details { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--cream); display: none; }
+.bi-details.show { display: block; }
+.bi-detail-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; }
+.bi-detail-row .k { color: var(--muted); }
+.bi-detail-row .v { font-weight: 600; color: var(--ink); text-align: right; }
+.bi-notes-box { font-size: 12px; color: var(--ink); margin-top: 7px; padding: 9px; background: var(--cream); border-radius: 6px; }
+.bi-card-actions { margin-top: 10px; display: flex; gap: 8px; }
+.bi-card-actions button { flex: 1; padding: 9px; font-size: 12px; font-weight: 600; border-radius: 7px; cursor: pointer; border: 1px solid var(--border); background: var(--white); color: var(--navy); font-family: inherit; }
+.bi-card-actions button.primary { background: var(--navy); color: var(--white); border: none; }
+.bi-empty { text-align: center; padding: 36px 20px; color: var(--muted); font-size: 13px; }
+
+/* PIN GATE */
+#pinGate { position: fixed; inset: 0; background: var(--navy); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 24px; }
+#pinGate.hidden { display: none; }
+.pin-card { background: white; border-top: 4px solid var(--gold); padding: 32px 28px; max-width: 320px; width: 100%; text-align: center; border-radius: 14px; }
+.pin-card h2 { font-family: Georgia, serif; margin: 0 0 6px; color: var(--navy); font-size: 20px; }
+.pin-card p { margin: 0 0 20px; font-size: 12.5px; color: var(--muted); font-style: italic; }
+.pin-input { width: 100%; font-size: 20px; letter-spacing: 0.5em; text-align: center; padding: 12px 10px; border: 1px solid var(--border); background: var(--cream); margin-bottom: 14px; border-radius: 8px; }
+.pin-error { min-height: 1.2em; color: var(--red); font-size: 12px; margin-bottom: 12px; }
+.pin-submit { width: 100%; background: var(--navy); color: white; padding: 12px; font-size: 14px; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div id="pinGate">
+  <div class="pin-card">
+    <h2>ABS Field Tools</h2>
+    <p>Enter your access PIN to continue</p>
+    <input type="password" inputmode="numeric" maxlength="6" class="pin-input" id="pinInput" placeholder="&middot;&middot;&middot;&middot;">
+    <div class="pin-error" id="pinError"></div>
+    <button class="pin-submit" id="pinSubmit">Unlock</button>
+  </div>
+</div>
+
+<div id="appShell" style="display:none;">
+
+<header>
+  <div class="logo-badge">AB</div>
+  <div>
+    <div class="logo-text">ABS <span>Field Tools</span></div>
+    <div class="header-sub">Property Scout &middot; Buyer Intake</div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- TOOL: PROPERTY SCOUT -->
+  <div class="tool-panel active" id="tool-scout">
+    <div class="tool-header">
+      <div class="tool-eyebrow">Public Records</div>
+      <div class="tool-title">Property Scout</div>
+      <div class="tool-desc">Public records lookup with a built-in compliance workflow. Search any Texas property and share with clients the right way.</div>
+    </div>
+    <div class="form-card">
+      <div class="form-row" style="margin-bottom: 8px;">
+        <label>Search a property</label>
+        <div class="search-row">
+          <input type="text" id="ps-address-input" placeholder="2113 Carriage Hill St, Denton TX">
+          <button class="search-btn" id="ps-search-btn" onclick="searchProperty()">Search</button>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);">Enter full street address including city and state for best results.</div>
+    </div>
+    <div id="ps-result-area"></div>
+  </div>
+
+  <!-- TOOL: BUYER INTAKE -->
+  <div class="tool-panel" id="tool-buyerintake">
+    <div class="tool-header">
+      <div class="tool-eyebrow">Showings</div>
+      <div class="tool-title">Buyer Intake</div>
+      <div class="tool-desc">Capture a buyer's offer details right after a showing. They fill it out on their phone &mdash; you review and move it into the offer.</div>
+    </div>
+
+    <div class="bi-toggle">
+      <button class="active" id="bi-tab-new" onclick="biShowView('new')">New intake</button>
+      <button id="bi-tab-submitted" onclick="biShowView('submitted')">Submitted</button>
+    </div>
+
+    <div class="bi-view active" id="bi-view-new">
+      <div class="form-card">
+        <div class="form-row">
+          <label>Property address</label>
+          <input type="text" id="bi-address" placeholder="123 Mockingbird Ln, Lantana TX 76226">
+        </div>
+        <button class="btn-submit" id="bi-create-btn" onclick="biCreateLink()">Create link</button>
+        <div style="font-size:11px;color:var(--red);margin-top:8px;display:none;" id="bi-create-error"></div>
+      </div>
+      <div class="bi-link-result" id="bi-link-result">
+        <div class="form-card">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Link ready &mdash; share it with your client:</div>
+          <div class="bi-link-box">
+            <input type="text" id="bi-link-output" readonly>
+            <button class="btn-copy" onclick="biCopyLink()" id="bi-copy-btn">Copy</button>
+          </div>
+          <div class="bi-share-row">
+            <a href="#" id="bi-text-link" class="bi-share-text">Text it</a>
+            <a href="#" id="bi-email-link" class="bi-share-email">Email it</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bi-view" id="bi-view-submitted">
+      <div class="form-card bi-pin-card" id="bi-pin-gate">
+        <div class="form-row" style="text-align:left;">
+          <label>Enter PIN</label>
+          <input type="text" id="bi-pin-input" inputmode="numeric" maxlength="6">
+        </div>
+        <button class="btn-submit" onclick="biCheckPin()">Unlock</button>
+        <div class="bi-pin-error" id="bi-pin-error">Incorrect PIN.</div>
+      </div>
+      <div id="bi-submitted-list" style="display:none;"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- PROPERTY SCOUT MODALS -->
+<div class="modal-overlay" id="modal-before-send">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-before-send')">&#10005;</button>
+    <h2>Before We Send This Report</h2>
+    <div class="modal-alert">
+      <h3>Consumer acknowledgment required</h3>
+      <p class="modal-citation">Texas Occ. Code &sect;1101.562 &amp; &sect;1101.563</p>
+      <p>Viewing or purchasing residential property requires a written representation agreement with a licensed Texas agent prior to any showing.</p>
+    </div>
+    <div class="modal-items">
+      <div class="modal-item">
+        <h4>1. Neutrality Declaration</h4>
+        <p>This Property Scout report contains public record information only and does not constitute professional real estate advice, appraisal, or legal counsel.</p>
+      </div>
+      <div class="modal-item">
+        <h4>2. Representation Requirement</h4>
+        <p>I understand that viewing any residential property requires a signed written representation agreement with a licensed Texas agent prior to the showing.</p>
+      </div>
+      <div class="modal-item">
+        <h4>3. Disclaimer</h4>
+        <p>ABS Field Tools is a data tool, not your legal or brokerage advisor. You assume full responsibility for the information shared with the consumer.</p>
+      </div>
+    </div>
+    <div class="modal-fields">
+      <div class="modal-field">
+        <label>Consumer Name (to confirm acknowledgment)</label>
+        <input type="text" id="consumer-name-1" placeholder="Full name">
+      </div>
+    </div>
+    <button class="modal-btn" id="modal-1-btn" onclick="proceedToModal2()">Continue to Share</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-share">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-share')">&#10005;</button>
+    <h2>Share Property Report</h2>
+    <div class="modal-items">
+      <div class="modal-item">
+        <h4>Neutrality Declaration</h4>
+        <p>I represent that I am providing this data as a neutral, factual summary. I am not offering professional advice, opinions, or negotiation strategy regarding this information at this time.</p>
+      </div>
+      <div class="modal-item">
+        <h4>IABS Confirmation</h4>
+        <p>I confirm that I have provided the mandatory Information About Brokerage Services (IABS) notice to this consumer as required by Texas law.</p>
+      </div>
+      <div class="modal-item">
+        <h4>Disclaimer</h4>
+        <p>ABS Field Tools is a data tool, not your legal or brokerage advisor. You assume full responsibility for the information shared with the consumer.</p>
+      </div>
+    </div>
+    <div class="modal-fields">
+      <div class="modal-field">
+        <label>Consumer Name</label>
+        <input type="text" id="consumer-name-2" placeholder="Full name">
+      </div>
+      <div class="modal-field">
+        <label>Consumer Email</label>
+        <input type="email" id="consumer-email" placeholder="email@example.com">
+      </div>
+    </div>
+    <div class="modal-check">
+      <input type="checkbox" id="iabs-confirm">
+      <label for="iabs-confirm">I acknowledge my status as a professional and confirm compliance with IABS and neutrality requirements.</label>
+    </div>
+    <button class="modal-btn" id="modal-2-btn" onclick="confirmShare()">Share Report</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-success">
+  <div class="modal" style="text-align:center;">
+    <h2>Report Shared</h2>
+    <p style="font-size:13px; color:var(--muted); margin: 1rem 0; line-height:1.6;">The property report has been logged and sent to <strong id="success-email"></strong>. Your compliance acknowledgment has been recorded.</p>
+    <button class="modal-btn" onclick="closeModal('modal-success')" style="margin-top:0.5rem;">Done</button>
+  </div>
+</div>
+
+<!-- BOTTOM TAB BAR -->
+<div class="bottom-nav">
+  <button class="active" id="nav-scout" onclick="showTool('scout')">
+    <span class="nav-icon">&#127968;</span>Property Scout
+  </button>
+  <button id="nav-buyerintake" onclick="showTool('buyerintake')">
+    <span class="nav-icon">&#128203;</span>Buyer Intake
+  </button>
+</div>
+
+</div>
+
+<script>
+const SUPABASE_URL = 'https://petfaclkzdudyvyhifaj.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_H6IVVyBLqTTsub1zH_igSw_EqimRQ9Y';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// -- BUYER INTAKE --
+const BI_AGENT_EMAIL = 'mike@attorneybrokerservices.com';
+const BI_BASE_URL = 'https://ezzagent-tools.netlify.app/intake.html';
+const BI_PIN = '6202';
+
+function biShowView(view) {
+  document.getElementById('bi-view-new').classList.toggle('active', view === 'new');
+  document.getElementById('bi-view-submitted').classList.toggle('active', view === 'submitted');
+  document.getElementById('bi-tab-new').classList.toggle('active', view === 'new');
+  document.getElementById('bi-tab-submitted').classList.toggle('active', view === 'submitted');
+  if (view === 'submitted' && sessionStorage.getItem('bi_pin_ok') === '1') {
+    biShowSubmittedList();
+  }
+}
+
+async function biCreateLink() {
+  const address = document.getElementById('bi-address').value.trim();
+  const btn = document.getElementById('bi-create-btn');
+  const errorEl = document.getElementById('bi-create-error');
+  errorEl.style.display = 'none';
+
+  if (!address) {
+    errorEl.textContent = 'Enter a property address first.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Creating...';
+
+  try {
+    const { data, error } = await sb.rpc('create_intake', {
+      p_agent_email: BI_AGENT_EMAIL,
+      p_property_address: address
+    });
+
+    if (error) throw error;
+
+    const link = `${BI_BASE_URL}?id=${data}`;
+    document.getElementById('bi-link-output').value = link;
+    document.getElementById('bi-text-link').href = `sms:?body=${encodeURIComponent("Here's the link to share your offer details for " + address + ": " + link)}`;
+    document.getElementById('bi-email-link').href = `mailto:?subject=${encodeURIComponent("Quick form for " + address)}&body=${encodeURIComponent("Fill this out when you get a sec and I'll start drafting the offer: " + link)}`;
+    document.getElementById('bi-link-result').classList.add('visible');
+  } catch (err) {
+    console.error('Create intake link failed:', err);
+    errorEl.textContent = 'Something went wrong creating the link. Try again.';
+    errorEl.style.display = 'block';
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Create link';
+}
+
+function biCopyLink() {
+  const input = document.getElementById('bi-link-output');
+  navigator.clipboard.writeText(input.value).then(() => {
+    const btn = document.getElementById('bi-copy-btn');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+function biCheckPin() {
+  const input = document.getElementById('bi-pin-input').value.trim();
+  const errorEl = document.getElementById('bi-pin-error');
+  if (input === BI_PIN) {
+    sessionStorage.setItem('bi_pin_ok', '1');
+    biShowSubmittedList();
+  } else {
+    errorEl.classList.add('show');
+  }
+}
+
+function biShowSubmittedList() {
+  document.getElementById('bi-pin-gate').style.display = 'none';
+  document.getElementById('bi-submitted-list').style.display = 'block';
+  biLoadIntakes();
+}
+
+const BI_FIELD_LABELS = {
+  offer_price: 'Offer price',
+  cash_at_closing: 'Cash at closing',
+  financing_amount: 'Financing amount',
+  financing_type: 'Financing type',
+  earnest_money: 'Earnest money',
+  option_fee: 'Option fee',
+  option_period_days: 'Option period (days)',
+  closing_date: 'Target closing date',
+  property_condition: 'Property condition',
+  possession: 'Possession',
+  home_warranty_wanted: 'Home warranty wanted',
+  home_warranty_cap: 'Home warranty cap',
+  seller_concession: 'Seller concession ask'
+};
+
+function biEscapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function biRenderDetails(intake) {
+  const data = intake.offer_data || {};
+  let rows = '';
+  for (const key in BI_FIELD_LABELS) {
+    let val = data[key];
+    if (val === undefined || val === null || val === '') continue;
+    if (typeof val === 'boolean') val = val ? 'Yes' : 'No';
+    rows += `<div class="bi-detail-row"><span class="k">${BI_FIELD_LABELS[key]}</span><span class="v">${biEscapeHtml(String(val))}</span></div>`;
+  }
+  let notes = data.special_notes ? `<div class="bi-notes-box">${biEscapeHtml(data.special_notes)}</div>` : '';
+  let contact = `<div class="bi-detail-row"><span class="k">Phone</span><span class="v">${biEscapeHtml(intake.client_phone || '\u2014')}</span></div>
+                 <div class="bi-detail-row"><span class="k">Email</span><span class="v">${biEscapeHtml(intake.client_email || '\u2014')}</span></div>`;
+  return rows + contact + notes;
+}
+
+function biFormatDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function biBadgeClass(status) {
+  if (status === 'sent') return 'bi-badge-sent';
+  if (status === 'submitted') return 'bi-badge-submitted';
+  if (status === 'transferred') return 'bi-badge-transferred';
+  return '';
+}
+
+function biToggleDetails(idx) {
+  document.getElementById(`bi-details-${idx}`).classList.toggle('show');
+}
+
+async function biMarkTransferred(id) {
+  try {
+    const { error } = await sb.rpc('mark_intake_transferred', { p_id: id });
+    if (!error) biLoadIntakes();
+  } catch (err) {
+    console.error('Mark transferred failed:', err);
+  }
+}
+
+async function biLoadIntakes() {
+  const list = document.getElementById('bi-submitted-list');
+  list.innerHTML = `<div class="bi-empty">Loading...</div>`;
+
+  try {
+    const { data: intakes, error } = await sb.rpc('get_agent_intakes', { p_agent_email: BI_AGENT_EMAIL });
+    if (error) throw error;
+
+    if (!intakes || intakes.length === 0) {
+      list.innerHTML = `<div class="bi-empty">No intakes yet. Create a link from a showing to get started.</div>`;
+      return;
+    }
+
+    list.innerHTML = intakes.map((intake, idx) => {
+      const hasData = intake.status === 'submitted' || intake.status === 'transferred';
+      return `
+        <div class="bi-card">
+          <div class="bi-card-top">
+            <div>
+              <p class="bi-addr">${biEscapeHtml(intake.property_address)}</p>
+              <p class="bi-meta">${intake.client_name ? biEscapeHtml(intake.client_name) + ' \u2014 ' : ''}${biFormatDate(intake.submitted_at || intake.sent_at || intake.created_at)}</p>
+            </div>
+            <span class="bi-badge ${biBadgeClass(intake.status)}">${intake.status}</span>
+          </div>
+          ${hasData ? `<div class="bi-details" id="bi-details-${idx}">${biRenderDetails(intake)}</div>` : ''}
+          <div class="bi-card-actions">
+            ${hasData ? `<button onclick="biToggleDetails(${idx})">View details</button>` : ''}
+            ${intake.status === 'submitted' ? `<button class="primary" onclick="biMarkTransferred('${intake.id}')">Mark transferred</button>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    console.error('Load intakes failed:', err);
+    list.innerHTML = `<div class="bi-empty">Couldn't load intakes. Try refreshing.</div>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const pinInput = document.getElementById('bi-pin-input');
+  if (pinInput) {
+    pinInput.addEventListener('keydown', e => { if (e.key === 'Enter') biCheckPin(); });
+  }
+});
+
+// -- BOTTOM NAV --
+function showTool(name) {
+  document.querySelectorAll('.tool-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tool-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+}
+
+// -- PROPERTY SCOUT --
+let currentProperty = null;
+const PS_GAS_URL = 'https://script.google.com/macros/s/AKfycbzSxnceaZyEQf7bNLN33vmynC3yBeYnEs6NUICj0vhhY1u50g0G-C7JQk86qvhosfm1ew/exec';
+
+document.getElementById('ps-address-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') searchProperty();
+});
+
+async function searchProperty() {
+  const address = document.getElementById('ps-address-input').value.trim();
+  if (!address) {
+    document.getElementById('ps-address-input').style.borderColor = 'var(--red)';
+    return;
+  }
+  document.getElementById('ps-address-input').style.borderColor = '';
+
+  const btn = document.getElementById('ps-search-btn');
+  btn.disabled = true;
+  btn.textContent = 'Searching...';
+
+  document.getElementById('ps-result-area').innerHTML = '<div class="ps-loading"><div class="ps-spinner"></div>Looking up property data...</div>';
+
+  try {
+    const res = await fetch('/.netlify/functions/property-scout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      document.getElementById('ps-result-area').innerHTML = `<div class="ps-error-card">${data.error || 'Property not found. Try including city and state.'}</div>`;
+      btn.disabled = false;
+      btn.textContent = 'Search';
+      return;
+    }
+
+    currentProperty = data.property;
+    renderPropertyReport(data);
+
+  } catch(err) {
+    console.error('Property Scout error:', err);
+    document.getElementById('ps-result-area').innerHTML = `<div class="ps-error-card">Something went wrong: ${err.message}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Search';
+}
+
+function renderPsTaxSection(p) {
+  if (!p.propertyTaxes) return '';
+  const years = Object.keys(p.propertyTaxes).sort((a, b) => b - a).slice(0, 3);
+  if (years.length === 0) return '';
+  const rows = years.map(year => {
+    const t = p.propertyTaxes[year];
+    return `<tr><td>${year}</td><td class="price">${t.total ? '$' + t.total.toLocaleString() : '\u2014'}</td></tr>`;
+  }).join('');
+  return `<div class="ps-section"><div class="ps-section-header"><span class="ps-section-title">Property Tax History</span></div>
+    <table class="ps-history-table"><thead><tr><th>Year</th><th>Total Tax</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function fmtCurrency(n) { return n != null ? '$' + Number(n).toLocaleString() : null; }
+
+const FLOOD_ZONE_LABELS = {
+  X: { label: 'Zone X \u2014 Minimal Flood Hazard', cls: 'safe' },
+  AE: { label: 'Zone AE \u2014 High Risk (100-yr Floodplain)', cls: 'risk' },
+  A: { label: 'Zone A \u2014 High Risk (100-yr Floodplain)', cls: 'risk' },
+  A99: { label: 'Zone A99 \u2014 Protected Area', cls: 'caution' },
+  VE: { label: 'Zone VE \u2014 Coastal High Risk', cls: 'risk' },
+  V: { label: 'Zone V \u2014 Coastal High Risk', cls: 'risk' },
+  AH: { label: 'Zone AH \u2014 Moderate Risk', cls: 'caution' },
+  AO: { label: 'Zone AO \u2014 Moderate Risk', cls: 'caution' },
+  D: { label: 'Zone D \u2014 Undetermined Risk', cls: 'caution' },
+};
+
+const RADON_LABELS = {
+  '1': { label: 'Zone 1 \u2014 Highest Potential (>4 pCi/L)', cls: 'risk' },
+  '2': { label: 'Zone 2 \u2014 Moderate Potential (2\u20134 pCi/L)', cls: 'caution' },
+  '3': { label: 'Zone 3 \u2014 Low Potential (<2 pCi/L)', cls: 'safe' },
+};
+
+const NEIGHBORHOOD_ITEMS = [
+  { key: 'transit', label: 'Nearest Transit' },
+  { key: 'grocery', label: 'Nearest Grocery' },
+  { key: 'pharmacy', label: 'Nearest Pharmacy' },
+  { key: 'hospital', label: 'Nearest Hospital / ER' },
+  { key: 'school', label: 'Nearest School' },
+  { key: 'park', label: 'Nearest Park' },
+];
+
+function toggleCollapse(id) {
+  document.getElementById('body-' + id).classList.toggle('open');
+  document.getElementById('chev-' + id).classList.toggle('open');
+}
+
+function renderHazardSection(hazards) {
+  if (!hazards) return '';
+  const femaInfo = FLOOD_ZONE_LABELS[hazards.femaFloodZone] || { label: `Zone ${hazards.femaFloodZone}`, cls: 'caution' };
+  const radonInfo = RADON_LABELS[hazards.radonZone] || null;
+  const superfundSites = hazards.superfundSites || [];
+  return `<div class="ps-collapse">
+    <button class="ps-collapse-header" onclick="toggleCollapse('hazard')">
+      <div class="ps-collapse-title-wrap"><span class="ps-collapse-badge" style="background:#FCEBEB;color:var(--red);">Risk</span><span class="ps-collapse-title">FEMA + EPA Hazards</span></div>
+      <span class="ps-collapse-chevron" id="chev-hazard">&#9660;</span>
+    </button>
+    <div class="ps-collapse-body" id="body-hazard">
+      <div class="ps-hazard-row"><div class="ps-hazard-label">FEMA Flood Zone</div><div class="ps-hazard-val ${femaInfo.cls}">${femaInfo.label}</div>
+        ${hazards.femaFloodZone !== 'X' ? '<div class="ps-hazard-note">Flood insurance may be required for federally-backed loans.</div>' : ''}
+        <div class="ps-hazard-source">Source: FEMA NFHL</div></div>
+      <div class="ps-hazard-row"><div class="ps-hazard-label">EPA Superfund Sites (5mi)</div>
+        ${superfundSites.length === 0 ? '<div class="ps-hazard-val safe">None detected within 5 miles</div>' : superfundSites.map(s => `<div class="ps-hazard-val risk" style="margin-bottom:4px;">${s.name} \u2014 ${[s.city, s.state].filter(Boolean).join(', ')}</div>`).join('')}
+        <div class="ps-hazard-source">Source: EPA FRS \u00b7 NPL sites only</div></div>
+      <div class="ps-hazard-row"><div class="ps-hazard-label">EPA Radon Zone</div><div class="ps-hazard-val ${radonInfo ? radonInfo.cls : 'caution'}">${radonInfo ? radonInfo.label : 'Information Unavailable'}</div>
+        ${hazards.radonZone === '1' ? '<div class="ps-hazard-note">High-potential zone \u2014 EPA recommends testing before purchase.</div>' : ''}
+        <div class="ps-hazard-source">Source: EPA Map of Radon Zones (county-level)</div></div>
+    </div></div>`;
+}
+
+function renderMarketSection(market) {
+  if (!market) return '';
+  const hasAnyData = market.domBaseline != null || market.zipMedianPricePerSqft != null || market.totalListings != null || market.bedroomComp || market.rentalSnapshot?.medianRent != null;
+  if (!hasAnyData) return '';
+  return `<div class="ps-collapse">
+    <button class="ps-collapse-header" onclick="toggleCollapse('market')">
+      <div class="ps-collapse-title-wrap"><span class="ps-collapse-badge" style="background:var(--teal-light);color:var(--teal);">Market</span><span class="ps-collapse-title">Market Intelligence</span></div>
+      <span class="ps-collapse-chevron" id="chev-market">&#9660;</span>
+    </button>
+    <div class="ps-collapse-body" id="body-market">
+      ${market.marketStatus ? `<div class="ps-market-row"><span class="label">Market status</span><span class="value">${market.marketStatus}${market.domBaseline ? ' \u00b7 ' + market.domBaseline + ' avg DOM' : ''}</span></div>` : ''}
+      ${market.zipMedianPricePerSqft ? `<div class="ps-market-row"><span class="label">ZIP median $/sqft</span><span class="value">$${market.zipMedianPricePerSqft}/sqft</span></div>` : ''}
+      ${market.subjectPricePerSqft ? `<div class="ps-market-row"><span class="label">This property $/sqft</span><span class="value">$${market.subjectPricePerSqft}/sqft</span></div>` : ''}
+      ${market.totalListings != null ? `<div class="ps-market-row"><span class="label">Active listings (ZIP)</span><span class="value">${market.totalListings}${market.newListings != null ? ' \u00b7 ' + market.newListings + ' new' : ''}</span></div>` : ''}
+      ${market.bedroomComp ? `<div class="ps-market-row"><span class="label">${market.bedroomComp.bedrooms}-bed median</span><span class="value">${fmtCurrency(market.bedroomComp.medianPrice)}</span></div>` : ''}
+      ${market.rentalSnapshot?.medianRent != null ? `<div class="ps-market-row"><span class="label">Median rent</span><span class="value">${fmtCurrency(market.rentalSnapshot.medianRent)}/mo</span></div>` : ''}
+      <div class="ps-hazard-source" style="margin-top:6px;">Source: RentCast \u00b7 ZIP-level data</div>
+    </div></div>`;
+}
+
+function renderNeighborhoodSection(neighborhood) {
+  if (!neighborhood) return '';
+  const cards = NEIGHBORHOOD_ITEMS.map(item => {
+    const d = neighborhood[item.key];
+    if (!d || !d.name) return `<div class="ps-amenity-card"><div class="ps-amenity-label">${item.label}</div><div class="ps-amenity-empty">None within 5 mi</div></div>`;
+    return `<div class="ps-amenity-card"><div class="ps-amenity-label">${item.label}</div><div class="ps-amenity-name">${d.name}</div>
+      <div class="ps-amenity-meta">${d.distanceMiles != null ? `<span>${d.distanceMiles} mi</span>` : ''}${d.rating ? `<span>\u2605 ${d.rating}</span>` : ''}</div></div>`;
+  }).join('');
+  return `<div class="ps-collapse">
+    <button class="ps-collapse-header" onclick="toggleCollapse('neighborhood')">
+      <div class="ps-collapse-title-wrap"><span class="ps-collapse-badge" style="background:var(--purple-light);color:var(--purple);">Area</span><span class="ps-collapse-title">Amenities & Proximity</span></div>
+      <span class="ps-collapse-chevron" id="chev-neighborhood">&#9660;</span>
+    </button>
+    <div class="ps-collapse-body" id="body-neighborhood"><div class="ps-amenity-grid">${cards}</div>
+    <div class="ps-hazard-source" style="margin-top:8px;">Source: Google Places \u00b7 nearest within 5 miles</div></div></div>`;
+}
+
+function renderPropertyReport(data) {
+  const p = data.property || data;
+  const images = data.images || {};
+  const hazards = data.hazards || null;
+  const marketData = data.marketData || null;
+  const neighborhood = data.neighborhood || null;
+
+  const ownerName = p.owner?.names?.join(', ') || p.owner?.name || p.ownerName || '\u2014';
+  const ownerType = p.owner?.type || p.ownerType || null;
+  const propertyAddress = p.formattedAddress || p.addressLine1 || '';
+
+  const historyEntries = p.history ? Object.values(p.history) : [];
+  historyEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const historyRows = historyEntries.length > 0 ? historyEntries.slice(0, 6).map(h => `
+    <tr><td>${h.date ? new Date(h.date).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : '\u2014'}</td>
+    <td class="price">${h.price ? '$' + h.price.toLocaleString() : '\u2014'}</td><td>${h.event || '\u2014'}</td></tr>`).join('')
+    : '<tr><td colspan="3" style="color:var(--muted); font-size:12px; padding:1rem 0;">No sale history available</td></tr>';
+
+  const lastSaleEntry = historyEntries.find(h => h.event && h.event.toLowerCase().includes('sale'));
+  const ownershipYears = p.lastSaleDate ? Math.floor((new Date() - new Date(p.lastSaleDate)) / (365.25 * 24 * 60 * 60 * 1000)) : null;
+  const lastSalePrice = p.lastSalePrice || lastSaleEntry?.price || null;
+  const calculatedAcreage = p.lotSize ? (p.lotSize / 43560).toFixed(3) : null;
+
+  const photoHtml = images.streetview
+    ? `<div class="ps-photo-wrap"><img src="${images.streetview}" alt="Street view of ${propertyAddress}" loading="lazy"></div>`
+    : '';
+
+  document.getElementById('ps-result-area').innerHTML = `
+    ${photoHtml}
+    <div class="ps-report-header">
+      <div class="ps-report-address">${propertyAddress || 'Address'}</div>
+      <div class="ps-report-sub">${p.county || ''} County \u00b7 ${p.propertyType || 'Residential'}</div>
+      <div class="ps-report-meta">
+        ${p.propertyType ? `<span class="ps-tag">${p.propertyType}</span>` : ''}
+        ${ownerType ? `<span class="ps-tag">Owner: ${ownerType}</span>` : ''}
+        ${p.lastSaleDate ? `<span class="ps-tag">Last sold ${new Date(p.lastSaleDate).getFullYear()}</span>` : ''}
+      </div>
+    </div>
+    <div class="ps-section">
+      <div class="ps-section-header"><span class="ps-section-title">Core Identity & Legal</span></div>
+      <div class="ps-stats-grid" style="margin-bottom:10px;">
+        <div class="ps-stat"><div class="ps-stat-label">APN / Tax Account</div><div class="ps-stat-val">${p.assessorID || p.apn || '\u2014'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Property type</div><div class="ps-stat-val">${p.propertyType || '\u2014'}</div></div>
+      </div>
+      <div style="background:var(--cream); border:1px solid var(--border); border-radius:8px; padding:11px 13px;">
+        <div style="font-size:10px; color:var(--muted); margin-bottom:4px;">Legal Description</div>
+        <div style="font-size:12.5px; font-weight:700; color:var(--ink); margin-bottom:5px;">${p.legalDescription || '\u2014'}</div>
+        <div style="font-size:10px; color:#9A6A00; font-weight:600;">Public Record \u00b7 Verify with county CAD before contract</div>
+      </div>
+    </div>
+    <div class="ps-section">
+      <div class="ps-section-header"><span class="ps-section-title">Property Details</span></div>
+      <div class="ps-stats-grid">
+        <div class="ps-stat"><div class="ps-stat-label">Year built</div><div class="ps-stat-val">${p.yearBuilt || '\u2014'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Sq footage</div><div class="ps-stat-val">${p.squareFootage ? p.squareFootage.toLocaleString() + ' sqft' : '\u2014'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Bedrooms</div><div class="ps-stat-val">${p.bedrooms || '\u2014'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Bathrooms</div><div class="ps-stat-val">${p.bathrooms || '\u2014'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Lot size</div><div class="ps-stat-val">${p.lotSize ? p.lotSize.toLocaleString() + ' sqft' : '\u2014'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Calc. acreage</div><div class="ps-stat-val">${calculatedAcreage ? calculatedAcreage + ' ac' : '\u2014'}</div></div>
+      </div>
+    </div>
+    <div class="ps-section">
+      <div class="ps-section-header"><span class="ps-section-title">Ownership & Transfer History</span></div>
+      <div class="ps-stats-grid" style="margin-bottom:10px;">
+        <div class="ps-stat"><div class="ps-stat-label">Owner name</div><div class="ps-stat-val">${ownerName}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Ownership length</div><div class="ps-stat-val">${ownershipYears !== null ? ownershipYears + ' yrs' : '\u2014'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Last sale price</div><div class="ps-stat-val">${lastSalePrice ? '$' + lastSalePrice.toLocaleString() : '\u2014'}</div></div>
+        <div class="ps-stat"><div class="ps-stat-label">Last sale date</div><div class="ps-stat-val">${p.lastSaleDate ? new Date(p.lastSaleDate).toLocaleDateString('en-US', {month:'short', year:'numeric'}) : '\u2014'}</div></div>
+      </div>
+      <table class="ps-history-table"><thead><tr><th>Date</th><th>Price</th><th>Type</th></tr></thead><tbody>${historyRows}</tbody></table>
+    </div>
+    <div class="ps-data-source">Data sourced from public records via RentCast. For informational purposes only &mdash; not a professional appraisal or legal advice. Always verify against county appraisal district records.</div>
+    ${renderPsTaxSection(p)}
+    ${renderHazardSection(hazards)}
+    ${renderMarketSection(marketData)}
+    ${renderNeighborhoodSection(neighborhood)}
+    <button class="ps-share-btn" onclick="openModal('modal-before-send')">Share with Client</button>
+    <div class="ps-disclaimer">ABS Field Tools is a data tool, not a legal or brokerage advisor. Always consult your broker before sharing property data with consumers. IABS delivery required under Texas law prior to sharing.</div>`;
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function proceedToModal2() {
+  const name = document.getElementById('consumer-name-1').value.trim();
+  if (!name) {
+    document.getElementById('consumer-name-1').style.borderColor = 'var(--red)';
+    return;
+  }
+  document.getElementById('consumer-name-1').style.borderColor = '';
+  document.getElementById('consumer-name-2').value = name;
+  closeModal('modal-before-send');
+  openModal('modal-share');
+}
+
+async function confirmShare() {
+  const name = document.getElementById('consumer-name-2').value.trim();
+  const email = document.getElementById('consumer-email').value.trim();
+  const confirmed = document.getElementById('iabs-confirm').checked;
+
+  if (!name) { document.getElementById('consumer-name-2').style.borderColor = 'var(--red)'; return; }
+  if (!email || !email.includes('@')) { document.getElementById('consumer-email').style.borderColor = 'var(--red)'; return; }
+  if (!confirmed) { document.getElementById('iabs-confirm').parentElement.style.color = 'var(--red)'; return; }
+
+  const btn = document.getElementById('modal-2-btn');
+  btn.textContent = 'Sending...';
+  btn.disabled = true;
+
+  try {
+    await fetch(PS_GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'propertyScoutShare',
+        consumerName: name,
+        consumerEmail: email,
+        address: currentProperty?.formattedAddress || '',
+        agentConfirmed: true,
+        timestamp: new Date().toISOString()
+      })
+    });
+  } catch(e) {}
+
+  document.getElementById('success-email').textContent = email;
+  closeModal('modal-share');
+  openModal('modal-success');
+
+  btn.textContent = 'Share Report';
+  btn.disabled = false;
+}
+
+// -- PIN GATE --
+const FIELD_TOOLS_PIN = "7314";
+const FIELD_TOOLS_PIN_KEY = "abs_field_tools_unlocked";
+
+const ftPinGate = document.getElementById('pinGate');
+const ftAppShell = document.getElementById('appShell');
+const ftPinInput = document.getElementById('pinInput');
+const ftPinError = document.getElementById('pinError');
+const ftPinSubmit = document.getElementById('pinSubmit');
+
+function unlockFieldTools() {
+  ftPinGate.classList.add('hidden');
+  ftAppShell.style.display = 'block';
+}
+
+function checkFieldToolsPin() {
+  const entered = ftPinInput.value.trim();
+  if (entered === FIELD_TOOLS_PIN) {
+    try { localStorage.setItem(FIELD_TOOLS_PIN_KEY, "true"); } catch (e) {}
+    ftPinError.textContent = '';
+    unlockFieldTools();
+  } else {
+    ftPinError.textContent = "That PIN didn't match. Try again.";
+    ftPinInput.value = '';
+    ftPinInput.focus();
+  }
+}
+
+ftPinSubmit.addEventListener('click', checkFieldToolsPin);
+ftPinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkFieldToolsPin(); });
+
+(function initFieldToolsPin() {
+  let alreadyUnlocked = false;
+  try { alreadyUnlocked = localStorage.getItem(FIELD_TOOLS_PIN_KEY) === "true"; } catch (e) {}
+  if (alreadyUnlocked) {
+    unlockFieldTools();
+  } else {
+    ftPinInput.focus();
+  }
+})();
+
+// -- PWA SERVICE WORKER (basic, enables installability) --
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+
+</body>
+</html>
